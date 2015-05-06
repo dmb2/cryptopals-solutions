@@ -17,13 +17,19 @@ end
 def freq_hist(test_str)
   hist = Hash.new(0)
   sani_str=test_str.scan(/[A-Za-z]/).join.downcase
-  sani_str.each_char{ |c| 
-    hist[c]++
+  sani_str.each_char {|c| 
+    hist[c]+=1
   }
   hist
 end
 def pearson_chi2(observed,expected)
-  
+  chi2=0
+  ndof=0
+  observed.keys.each{ |c| 
+    ndof+=1
+    chi2+=(observed[c]-expected[c])**2/expected[c]
+  }
+  chi2/ndof
 end
 def score_string(raw_string)
   english_freq={'a' => 0.08167, 'b' => 0.01492,
@@ -40,11 +46,27 @@ def score_string(raw_string)
                 'w' => 0.02361, 'x' => 0.00150,
                 'y' => 0.01974, 'z' => 0.00074 }
   hist=freq_hist(raw_string)
-  pearson_chi2()
+  pearson_chi2(hist,english_freq)
 end
 def break_xor(cipher_hex)
-  for c in 48..127
+  key=''
+  minscore=10000
+  for c in 48..126
     result = hex_xor_key(cipher_hex,str_to_hex(c.chr.to_s))
-    score_string(hex_to_bytes(result))
+    ascii_res = hex_to_bytes(result)
+    # if ascii_res =~ /[^[:print:]]/
+    #   next
+    # end
+    score=score_string(ascii_res)
+    if score < minscore
+      minscore=score
+      key=c.chr.to_s
+    end
   end
+  puts minscore
+  key
+end
+
+def str_xor_key(str,key)
+  hex_xor_key(str_to_hex(str),str_to_hex(key))
 end
