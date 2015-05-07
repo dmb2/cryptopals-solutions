@@ -1,6 +1,7 @@
 Gem::Specification.new do |s| 
   s.name = 'crypto_tools'
   s.version = '0.0.1'
+  s.executables << 'challenge_set1'
   s.date = '2015-05-06'
   s.summary = 'Cryptography and pen testing tools'
   s.description = 'Tools for completing matasano\'s crypto challenges'

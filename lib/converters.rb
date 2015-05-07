@@ -1,7 +1,7 @@
 require 'base64'
 
-class converters
-  def hex_to_bytes(in_str)
+class Converters
+  def self.hex_to_bytes(in_str)
     # Takes an input string and returns a byte array
     unless in_str.size % 2 == 0
       puts in_str.size
@@ -12,13 +12,13 @@ class converters
     end
     [in_str].pack('H*')
   end
-  def str_to_hex(in_str)
+  def self.str_to_hex(in_str)
     in_str.unpack('H*').first
   end
-  def hex_to_base64(in_str)
+  def self.hex_to_base64(in_str)
     Base64.strict_encode64(hex_to_bytes(in_str))
   end
-  def base64_to_hex(in_str)
-    bytes2hex(Base64.decode64(in_str))
+  def self.base64_to_hex(in_str)
+    str_to_hex(Base64.decode64(in_str))
   end
 end
