@@ -7,7 +7,7 @@ def challenge1
   if Converters.hex_to_base64("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d") != "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t"
     raise "Challenge 1 failed!"
   else
-    print "Challenge 1 passed!"
+    puts "Challenge 1 passed!"
   end
 end
 
@@ -15,46 +15,62 @@ def challenge2
   if CryptoTools.hex_xor("1c0111001f010100061a024b53535009181c","686974207468652062756c6c277320657965") != "746865206b696420646f6e277420706c6179"
     raise "Challenge 2 failed!"
   else
-    print "Challenge 2 passed!"
+    puts "Challenge 2 passed!"
   end
 end
  
 def challenge3
-  if CryptoTools.break_xor("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736") != "X"
+  if CryptoTools.break_xor("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")[0] != "X"
     raise "Challenge 3 failed!"
   else
-    print "Challenge 3 passed!"
+    puts "Challenge 3 passed!"
   end
 end
 
 def challenge4
   cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/4.txt")
   key=""
-  cipher_http.body_str.each_line{ |l|
-    # puts l
-    key = CryptoTools.break_xor(l.strip())
-    if key.length > 0
-      puts Converters.hex_to_bytes(hex_xor_key(l.strip(),str_to_hex(key)))
-    end
-  }
+  # minscore
+  key,cleartext=CryptoTools.detect_xor(cipher_http.body_str)
+  if key != "5"
+    raise "Challenge 4 failed!"
+  else
+    puts sprintf "%s %s","Challenge 4 passed!",cleartext
+  end
   nil
 end
 
 def challenge5
   if CryptoTools.str_xor_key("Burning 'em, if you ain't quick and nimble
 I go crazy when I hear a cymbal","ICE")!="0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
-    raise "Challenge 4 failed!"
+    raise "Challenge 5 failed!"
   else
-    print "Challenge 4 passed!"
+    puts "Challenge 5 passed!"
   end
+end
+def challenge6
+  cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/6.txt")
+  cipher_byte_str=Base64.decode64(cipher_http.body_str)
+  2.upto(40){ |keylen|
+    5.times{ |i|
+      CryptoTools.hamming_distance(cipher_byte_str.slice(i*keylen,keylen))
+      if i > 0
+        # puts sprintf "%d %s", i,Converters.str_to_hex()
+        # puts sprintf "%d %s", i,Converters.str_to_hex(Base64.decode64(cipher_http.body_str).slice(i*keylen,keylen))
+      end
+    }
+  }
 end
   
 def run_challenges
   challenge1
   challenge2
   challenge3
+  # four takes a while
   # challenge4
   challenge5
 end
 
-run_challenges
+challenge6
+# run_challenges
+

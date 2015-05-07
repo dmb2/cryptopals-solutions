@@ -6,7 +6,13 @@ class CryptoToolsTest < MiniTest::Test
     assert_equal CryptoTools.str_xor_key("Hello World","ICE"), "012629252c651e2c372527"
   end
   def test_break_xor
-    assert_equal CryptoTools.break_xor(CryptoTools.str_xor_key("Hello World","I")),"I"
+    assert_equal CryptoTools.break_xor(CryptoTools.str_xor_key("Hello World","I"))[0],"I"
+  end
+  def test_hamming_dist
+    assert_equal CryptoTools.hamming_distance("this is a test","wokka wokka!!!"),37
+  end
+  def test_nbits
+    assert_equal CryptoTools.nbits(31415926),18
   end
 end
 
