@@ -20,7 +20,12 @@ def challenge2
 end
  
 def challenge3
-  if CryptoTools.break_xor("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")[0] != "X"
+  cipher_text = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+  key,score=CryptoTools.break_xor(cipher_text)
+  if key != "X"
+    puts Converters.hex_to_bytes(CryptoTools.hex_xor_key(cipher_text,Converters.str_to_hex("X")))
+    puts Converters.hex_to_bytes(CryptoTools.hex_xor_key(cipher_text,Converters.str_to_hex(key)))
+    puts key,score
     raise "Challenge 3 failed!"
   else
     puts "Challenge 3 passed!"
@@ -51,15 +56,14 @@ end
 def challenge6
   cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/6.txt")
   cipher_byte_str=Base64.decode64(cipher_http.body_str)
-  2.upto(40){ |keylen|
-    5.times{ |i|
-      CryptoTools.hamming_distance(cipher_byte_str.slice(i*keylen,keylen))
-      if i > 0
-        # puts sprintf "%d %s", i,Converters.str_to_hex()
-        # puts sprintf "%d %s", i,Converters.str_to_hex(Base64.decode64(cipher_http.body_str).slice(i*keylen,keylen))
-      end
-    }
-  }
+  keylen=CryptoTools.find_keylen(cipher_byte_str)
+  key=CryptoTools.break_xor_key(cipher_byte_str,keylen)
+  if key != "Terminator'X: Bring the noise"
+    raise 'Challenge 6 failed!'
+  else
+    puts "Challenge 6 passed!"
+    puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
+  end
 end
   
 def run_challenges
@@ -69,8 +73,10 @@ def run_challenges
   # four takes a while
   # challenge4
   challenge5
+  challenge6
+  
 end
 
-challenge6
-# run_challenges
+# challenge6
+run_challenges
 
