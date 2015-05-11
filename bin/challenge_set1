@@ -23,9 +23,7 @@ def challenge3
   cipher_text = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
   key,score=CryptoTools.break_xor(cipher_text)
   if key != "X"
-    puts Converters.hex_to_bytes(CryptoTools.hex_xor_key(cipher_text,Converters.str_to_hex("X")))
     puts Converters.hex_to_bytes(CryptoTools.hex_xor_key(cipher_text,Converters.str_to_hex(key)))
-    puts key,score
     raise "Challenge 3 failed!"
   else
     puts "Challenge 3 passed!"
@@ -38,6 +36,7 @@ def challenge4
   # minscore
   key,cleartext=CryptoTools.detect_xor(cipher_http.body_str)
   if key != "5"
+    puts key,cleartext
     raise "Challenge 4 failed!"
   else
     puts sprintf "%s %s","Challenge 4 passed!",cleartext
@@ -59,6 +58,8 @@ def challenge6
   keylen=CryptoTools.find_keylen(cipher_byte_str)
   key=CryptoTools.break_xor_key(cipher_byte_str,keylen)
   if key != "Terminator'X: Bring the noise"
+    puts key,keylen
+    puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
     raise 'Challenge 6 failed!'
   else
     puts "Challenge 6 passed!"
@@ -70,13 +71,11 @@ def run_challenges
   challenge1
   challenge2
   challenge3
-  # four takes a while
-  # challenge4
+  challenge4
   challenge5
   challenge6
-  
 end
 
-# challenge6
+# challenge4
 run_challenges
 
