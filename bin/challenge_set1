@@ -57,9 +57,9 @@ def challenge6
   cipher_byte_str=Base64.decode64(cipher_http.body_str)
   keylen=CryptoTools.find_keylen(cipher_byte_str)
   key=CryptoTools.break_xor_key(cipher_byte_str,keylen)
-  if key != "Terminator'X: Bring the noise"
+  if key != "Terminator X: Bring the noise"
     puts key,keylen
-    puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
+    # puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
     raise 'Challenge 6 failed!'
   else
     puts "Challenge 6 passed!"
@@ -71,7 +71,7 @@ def run_challenges
   challenge1
   challenge2
   challenge3
-  challenge4
+  # challenge4
   challenge5
   challenge6
 end
