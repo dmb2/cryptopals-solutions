@@ -71,11 +71,11 @@ def run_challenges
   challenge1
   challenge2
   challenge3
-  # challenge4
+  challenge4
   challenge5
   challenge6
 end
 
-# challenge4
+# challenge6
 run_challenges
 

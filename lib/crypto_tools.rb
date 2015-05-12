@@ -77,14 +77,14 @@ class CryptoTools
     hist,total=freq_hist(raw_string)
     return pearson_chi2(hist,english_freq)
   end
-  def self.break_xor(cipher_hex)
+  def self.break_xor(cipher_hex,strict_ascii=true)
     key=''
     minscore=1e10
     for c in 32..126
       result = hex_xor_key(cipher_hex,Converters.str_to_hex(c.chr.to_s))
       ascii_res = Converters.hex_to_bytes(result)
-      if ascii_res.scan(/[^[:print:]]/).length > 1 or
-        Float(ascii_res.scan(/[^[A-Za-z ]]/).length)/ascii_res.length > 0.30
+      if strict_ascii and (ascii_res.scan(/[^[:print:]]/).length > 1 or
+        Float(ascii_res.scan(/[^[A-Za-z ]]/).length)/ascii_res.length > 0.30)
         next
       end
       score=score_string(ascii_res)
@@ -162,9 +162,9 @@ class CryptoTools
       blocks+=[cipher_text.slice(keylen*i,keylen).bytes]
     }
     blocks.transpose.each { |list|
-      key,score=break_xor(Converters.str_to_hex(list.pack("C*")))
+      key,score=break_xor(Converters.str_to_hex(list.pack("C*")),false)
       key_str+=key
-      puts sprintf "%s %.3g",key,score
+      # puts sprintf "%s %.3g",key,score
     }
     return key_str
   end
