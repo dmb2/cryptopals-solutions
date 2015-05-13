@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby 
+require 'curb'
+require 'crypto_tools'
+require 'block_crypto'
+require 'openssl'
+
+def challenge9
+  puts Converters.str_to_hex("YELLOW SUBMARINE".pkcs7pad(20))
+end
+
+def run_challenges
+  challenge9
+end
+run_challenges
+
