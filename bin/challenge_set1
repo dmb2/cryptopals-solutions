@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby 
 require 'curb'
 require 'crypto_tools'
-
+require 'openssl'
 
 def challenge1
   if Converters.hex_to_base64("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d") != "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t"
@@ -66,7 +66,28 @@ def challenge6
     puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
   end
 end
-  
+
+def challenge7
+  aes_http = Curl.get("http://cryptopals.com/static/challenge-data/7.txt")
+  cipher_txt=Base64.decode64(aes_http.body_str)
+  aes_key="YELLOW SUBMARINE" # neato 16 bytes!
+  cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+  cipher.decrypt
+  cipher.key=aes_key
+  clear_text = cipher.update(cipher_txt) + cipher.final
+  puts clear_text
+end
+
+def challenge8
+  cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/8.txt")
+  ecb_text=CryptoTools.detect_aes_ecb(cipher_http.body_str)
+  if ecb_text.slice(0,16)!="d880619740a8a19b"
+    raise "Could not detect ECB in challenge 8 input file"
+  else
+    printf "Challenge 8 passed! %s\n",ecb_text
+  end
+end
+
 def run_challenges
   challenge1
   challenge2
@@ -74,8 +95,8 @@ def run_challenges
   challenge4
   challenge5
   challenge6
+  challenge7
+  challenge8
 end
-
-# challenge6
 run_challenges
 

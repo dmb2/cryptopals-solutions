@@ -168,4 +168,22 @@ class CryptoTools
     }
     return key_str
   end
+  def self.detect_aes_ecb(strings)
+    strings.each_line{ |l|
+      # break into 16 byte blocks
+      # for each block check this block against all other blocks
+      # if match, break and return string
+      block_length=32
+      cipher_text=l.strip()
+      set = Hash.new(0)
+      (Float(cipher_text.length)/block_length).ceil().times{ |i| 
+        set[cipher_text.slice(block_length*i,block_length)]+=1
+      }
+      if set.values.inject{ |sum,x| sum + x}!=set.values.length
+        puts "ECB Detected!"
+        return l
+      end
+    }
+    return ""
+  end
 end
