@@ -1,4 +1,5 @@
 require 'minitest/autorun'
+require 'block_crypto'
 require 'crypto_tools'
 
 class CryptoToolsTest < MiniTest::Test
@@ -31,16 +32,26 @@ end
 
 class ConvertersTest < MiniTest::Test
   def test_hex_to_bytes
-    assert_equal Converters.hex_to_bytes("48656c6c6f20576f726c64") , "Hello World"
+    assert_equal Converters.hex_to_bytes("48656c6c6f20576f726c64") ,
+                 "Hello World"
   end
   def test_str_to_hex 
-    assert_equal Converters.str_to_hex("Hello World"), "48656c6c6f20576f726c64"
+    assert_equal Converters.str_to_hex("Hello World"),
+                 "48656c6c6f20576f726c64"
   end
   def test_hex_to_base64
-    assert_equal Converters.hex_to_base64("48656c6c6f20576f726c64"), "SGVsbG8gV29ybGQ="
+    assert_equal Converters.hex_to_base64("48656c6c6f20576f726c64"),
+                 "SGVsbG8gV29ybGQ="
   end
   def test_base64_to_hex
-    assert_equal Converters.base64_to_hex("SGVsbG8gV29ybGQ="), "48656c6c6f20576f726c64"
+    assert_equal Converters.base64_to_hex("SGVsbG8gV29ybGQ="),
+                 "48656c6c6f20576f726c64"
   end
 end
 
+class BlockCryptoTest < MiniTest::Test
+  def test_pkcs7pad
+    assert_equal Converters.str_to_hex("Hello World".pkcs7pad(16)),
+                 "48656c6c6f20576f726c640505050505"
+  end
+end

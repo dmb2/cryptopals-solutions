@@ -1,5 +1,6 @@
 # coding: utf-8
 require 'converters'
+require 'block_crypto'
 # class String
 #   def chunk(i,n)
 #     if i < 1
