@@ -1,18 +1,6 @@
 # coding: utf-8
 require 'converters'
 require 'block_crypto'
-# class String
-#   def chunk(i,n)
-#     if i < 1
-#       raise "Chunks are only defined for i >= 1"
-#     end
-#     if n < 0
-#       raise "Negative chunk size has no meaning"
-#     end
-#     # puts sprintf "%d %d",n*(i-1),n
-#     self.slice(n*(i-1),n)
-#   end
-# end
 
 class CryptoTools 
   def self.hex_xor(hex_a,hex_b)

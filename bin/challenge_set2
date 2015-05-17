@@ -5,11 +5,29 @@ require 'block_crypto'
 require 'openssl'
 
 def challenge9
-  puts Converters.str_to_hex("YELLOW SUBMARINE".pkcs7pad(20))
+  if Converters.str_to_hex("YELLOW SUBMARINE".pkcs7pad(20)).slice(32,8)!="04040404"
+    raise "Error padding string to 20 bytes!"
+  else
+    puts "Challenge 9 passed!"
+  end
 end
-
+def challenge10
+  # cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/10.txt")
+  key="YELLOW SUBMARINE"
+  iv="foobarbaz"
+  test_str="Alice was beginning to get very tired of sitting by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversations?'"
+  cipher_text=BlockCrypto.aes_cbc_encrypt(test_str,key,iv)
+  puts Base64.encode64(cipher_text)
+  puts BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv)
+end
 def run_challenges
   challenge9
 end
-run_challenges
+challenge10
+
+# run_challenges
 

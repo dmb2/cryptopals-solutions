@@ -19,7 +19,22 @@ class String
 end
 
 class BlockCrypto
-  def self.Hello
-    puts "Block Crypto Hello!"
+  def self.aes_cbc_encrypt(clear_text,key,iv)
+    cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+    cipher.encrypt
+    cipher.key=key
+    cipher_text = cipher.update(clear_text) + cipher.final
+    # cbc magic
+    blocks=[]
+    block_size=iv.length
+    
+    return cipher_text
+  end
+  def self.aes_cbc_decrypt(cipher_text,key,iv)
+    decipher = OpenSSL::Cipher.new 'AES-128-ECB'
+    decipher.decrypt
+    decipher.key=key
+    # cbc magic
+    return decipher.update(cipher_text)+decipher.final
   end
 end
