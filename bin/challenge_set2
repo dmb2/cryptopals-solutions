@@ -20,9 +20,10 @@ bank, and of having nothing to do: once or twice she had peeped into the
 book her sister was reading, but it had no pictures or conversations in
 it, 'and what is the use of a book,' thought Alice 'without pictures or
 conversations?'"
+  puts Base64.encode64(test_str)
   cipher_text=BlockCrypto.aes_cbc_encrypt(test_str,key,iv)
   puts Base64.encode64(cipher_text)
-  puts BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv)
+  puts Base64.encode64(BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv))
 end
 def run_challenges
   challenge9
