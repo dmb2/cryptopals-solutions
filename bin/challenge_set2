@@ -12,23 +12,23 @@ def challenge9
   end
 end
 def challenge10
-  # cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/10.txt")
+  cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/10.txt")
   key="YELLOW SUBMARINE"
-  iv="0000000000000000"
-  test_str="Alice was beginning to get very tired of sitting by her sister on the
-bank, and of having nothing to do: once or twice she had peeped into the
-book her sister was reading, but it had no pictures or conversations in
-it, 'and what is the use of a book,' thought Alice 'without pictures or
-conversations?'"
-  puts Base64.encode64(test_str)
-  cipher_text=BlockCrypto.aes_cbc_encrypt(test_str,key,iv)
-  puts Base64.encode64(cipher_text)
-  puts Base64.encode64(BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv))
+  iv=Converters.hex_to_bytes("00000000000000000000000000000000")
+  clear_text=BlockCrypto.aes_cbc_decrypt(Base64.decode64(cipher_http.body_str),key,iv)
+  if clear_text.split(/\n/)[-1] != "Play that funky music "
+    raise "Challenge 10 failed!"
+  else
+    puts "Challenge 10 passed!"
+  end
+end
+def challenge11
+  
 end
 def run_challenges
   challenge9
+  challenge10
 end
-challenge10
 
-# run_challenges
+run_challenges
 

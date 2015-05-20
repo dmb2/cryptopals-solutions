@@ -54,4 +54,19 @@ class BlockCryptoTest < MiniTest::Test
     assert_equal Converters.str_to_hex("Hello World".pkcs7pad(16)),
                  "48656c6c6f20576f726c640505050505"
   end
+  def test_pkcs7strip
+    assert_equal "Hello World".pkcs7pad(16).pkcs7strip, "Hello World"
+  end
+  def test_aes_cbc_encrypt_decrypt
+      key="YELLOW SUBMARINE"
+      iv="0000000000000000"
+      test_str="Alice was beginning to get very tired of sitting by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversations?'"
+      cipher_text=BlockCrypto.aes_cbc_encrypt(test_str,key,iv)
+      clear_text=BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv)
+      assert_equal clear_text,test_str
+  end
 end

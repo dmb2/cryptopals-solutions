@@ -2,6 +2,16 @@ require 'converters'
 require 'openssl'
 
 class String
+  def pkcs7strip
+    str=self.clone
+    nbytes=str[-1].bytes[0]
+    nbytes.times{
+      if str[-1].bytes[0]==nbytes
+        str.slice!(-1)
+      end
+    }
+    return str
+  end
   def pkcs7pad(block_size)
     if block_size > 256
       raise "PKCS7 is not defined for block sizes larger than 256!"
@@ -24,52 +34,36 @@ class BlockCrypto
     cipher.encrypt
     cipher.key=key
     # cbc magic
-    blocks=[]
     block_size=iv.length
-    # Refactor this to use one loop instead of two
+    blocks=[]
     (Float(clear_text.length)/block_size).ceil().times do |i| 
-      blocks+=[clear_text.slice(block_size*i,block_size)]
+      blocks.push(clear_text.slice(i*block_size,block_size))
     end
     blocks[-1]=blocks[-1].pkcs7pad(block_size)
-    firstblock=Converters.hex_to_bytes(CryptoTools.hex_xor(Converters.str_to_hex(blocks.slice!(0)),
-                                                         Converters.str_to_hex(iv)))
-    blocks+=[firstblock];
-    blocks.each.with_index do |block,i| 
-      hex_block=Converters.str_to_hex(block)
-      prev_hex_block=Converters.str_to_hex(blocks[i-1])
-      printf "%s\n",hex_block
-      scrambled=CryptoTools.hex_xor(hex_block,prev_hex_block)
-      blocks[i]=cipher.update(Converters.hex_to_bytes(scrambled))
+    blocks.unshift(iv)
+    ct = [iv]
+    1.upto(blocks.length-1) do |i| 
+      ct[i] = cipher.update(CryptoTools.xor_str(blocks[i],ct[i-1]))
     end
-    blocks=[firstblock]+blocks
-    return blocks.join+cipher.final
+    return ct[1..-1].join
   end
   def self.aes_cbc_decrypt(cipher_text,key,iv)
     decipher = OpenSSL::Cipher.new 'AES-128-ECB'
     decipher.decrypt
+    decipher.padding = 0
     decipher.key=key
-    # cbc magic
-    blocks=[]
     block_size=iv.length
-    # Refactor this to use one loop instead of two
+    blocks=[]
     (Float(cipher_text.length)/block_size).ceil().times do |i| 
-      blocks+=[cipher_text.slice(block_size*i,block_size)]
+      blocks.push(cipher_text.slice(i*block_size,block_size))
     end
-    decipher.update(blocks.slice!(0))
-    blocks.each.with_index do |block,i| 
-      prev=""
-      if i==0
-        prev=Converters.str_to_hex(iv)
-      else
-        prev=Converters.str_to_hex(blocks[i-1])
-      end
-      hex_block = Converters.str_to_hex(decipher.update(block))
-      clear_hex=CryptoTools.hex_xor(hex_block,prev)
-      printf "%s\n",clear_hex
-      blocks[i]=Converters.hex_to_bytes(clear_hex)
+    decipher.update(blocks[0])
+    blocks.unshift(iv)
+    pt = []
+    1.upto(blocks.length-1) do |i| 
+      pt[i] = CryptoTools.xor_str(decipher.update(blocks[i]),blocks[i-1])
     end
-    # decipher.final may be added to each block.. 
-    return blocks.join+decipher.final
-    # return decipher.update(cipher_text)+decipher.final
+    pt[-1]=pt[-1].pkcs7strip
+    return pt.join
   end
 end
