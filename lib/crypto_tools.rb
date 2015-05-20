@@ -3,19 +3,20 @@ require 'converters'
 require 'block_crypto'
 
 class CryptoTools 
-  def self.hex_xor(hex_a,hex_b)
-    if hex_a.length != hex_b.length
-      raise "Length of hex strings doesn't match!"
+  def self.xor_str(str_a,str_b)
+    if str_a.length != str_b.length
+      raise "Length of input strings doesn't match!"
     end
-    # puts hex_a,hex_b
-    bytes_a = Converters.hex_to_bytes(hex_a).bytes
-    bytes_b = Converters.hex_to_bytes(hex_b).bytes
-    Converters.str_to_hex(bytes_a.zip(bytes_b).map{ |x,y| x^y }.pack("C*"))
+    str_a.bytes.zip(str_b.bytes).map{ |x,y| x^y }.pack("C*")
   end
-  def self.hex_xor_key(hex_in,xor_key)
+  def self.xor_key(str,key)
     key_str=""
-    (Float(hex_in.length)/xor_key.length).ceil().times{ key_str+=xor_key }
-    hex_xor(hex_in,key_str.slice(0,hex_in.length))
+    (Float(str.length)/key.length).ceil().times{ key_str+=key }
+    xor_str(str,key_str.slice(0,str.length))
+  end
+  def self.hex_xor(hex_a,hex_b)
+    Converters.str_to_hex(xor_str(Converters.hex_to_bytes(hex_a),
+                                  Converters.hex_to_bytes(hex_b)))
   end
   def self.freq_hist(test_str)
     hist = Hash.new(0)
@@ -66,27 +67,22 @@ class CryptoTools
     hist,total=freq_hist(raw_string)
     return pearson_chi2(hist,english_freq)
   end
-  def self.break_xor(cipher_hex,strict_ascii=true)
+  def self.break_xor(cipher_text,strict_ascii=true)
     key=''
     minscore=1e10
     for c in 32..126
-      result = hex_xor_key(cipher_hex,Converters.str_to_hex(c.chr.to_s))
-      ascii_res = Converters.hex_to_bytes(result)
-      if strict_ascii and (ascii_res.scan(/[^[:print:]]/).length > 1 or
-        Float(ascii_res.scan(/[^[A-Za-z ]]/).length)/ascii_res.length > 0.30)
+      result = xor_key(cipher_text,c.chr.to_s)
+      if strict_ascii and (result.scan(/[^[:print:]]/).length > 1 or
+        Float(result.scan(/[^[A-Za-z ]]/).length)/result.length > 0.30)
         next
       end
-      score=score_string(ascii_res)
+      score=score_string(result)
       if score < minscore
         minscore=score
         key=c.chr.to_s
       end
     end
     return key,minscore
-  end
-
-  def self.str_xor_key(str,key)
-    hex_xor_key(Converters.str_to_hex(str), Converters.str_to_hex(key))
   end
   def self.nbits(value)
     tmp=value
@@ -112,10 +108,10 @@ class CryptoTools
     validkey=""
     validline=""
     strings.each_line{ |l|
-      cipher_text=l.strip()
+      cipher_text=Converters.hex_to_bytes(l.strip())
       key,score = CryptoTools.break_xor(cipher_text)
       if key!=""
-        ascii_res=Converters.hex_to_bytes(hex_xor_key(cipher_text,Converters.str_to_hex(key)))
+        ascii_res=xor_key(cipher_text,key)
         if score < minscore
           minscore=score
           validkey=key
@@ -151,9 +147,8 @@ class CryptoTools
       blocks+=[cipher_text.slice(keylen*i,keylen).bytes]
     }
     blocks.transpose.each { |list|
-      key,score=break_xor(Converters.str_to_hex(list.pack("C*")),false)
+      key,score=break_xor(list.pack("C*"),false)
       key_str+=key
-      # puts sprintf "%s %.3g",key,score
     }
     return key_str
   end

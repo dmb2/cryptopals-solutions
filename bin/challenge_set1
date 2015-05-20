@@ -20,10 +20,10 @@ def challenge2
 end
  
 def challenge3
-  cipher_text = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+  cipher_text = Converters.hex_to_bytes("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
   key,score=CryptoTools.break_xor(cipher_text)
   if key != "X"
-    puts Converters.hex_to_bytes(CryptoTools.hex_xor_key(cipher_text,Converters.str_to_hex(key)))
+    puts CryptoTools.xor_key(cipher_text,key)
     raise "Challenge 3 failed!"
   else
     puts "Challenge 3 passed!"
@@ -45,8 +45,8 @@ def challenge4
 end
 
 def challenge5
-  if CryptoTools.str_xor_key("Burning 'em, if you ain't quick and nimble
-I go crazy when I hear a cymbal","ICE")!="0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+  if Converters.str_to_hex(CryptoTools.xor_key("Burning 'em, if you ain't quick and nimble
+I go crazy when I hear a cymbal","ICE"))!="0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
     raise "Challenge 5 failed!"
   else
     puts "Challenge 5 passed!"
@@ -59,11 +59,10 @@ def challenge6
   key=CryptoTools.break_xor_key(cipher_byte_str,keylen)
   if key != "Terminator X: Bring the noise"
     puts key,keylen
-    # puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
     raise 'Challenge 6 failed!'
   else
     puts "Challenge 6 passed!"
-    puts Converters.hex_to_bytes(CryptoTools.str_xor_key(cipher_byte_str,key))  
+    puts CryptoTools.xor_key(cipher_byte_str,key)
   end
 end
 

@@ -3,8 +3,8 @@ require 'block_crypto'
 require 'crypto_tools'
 
 class CryptoToolsTest < MiniTest::Test
-  def test_str_xor_key
-    assert_equal CryptoTools.str_xor_key("Hello World","ICE"), "012629252c651e2c372527"
+  def test_xor_key
+    assert_equal Converters.str_to_hex(CryptoTools.xor_key("Hello World","ICE")), "012629252c651e2c372527"
   end
   def test_pearson_chi2
     english_freq={"a" => 0.0651738, "b" => 0.0124248, "c" => 0.0217339,
@@ -20,7 +20,7 @@ class CryptoToolsTest < MiniTest::Test
     assert_equal CryptoTools.pearson_chi2(Hash.new(0),english_freq), 1
   end
   def test_break_xor
-    assert_equal CryptoTools.break_xor(CryptoTools.str_xor_key("Alice was beginning to get very tired of sitting by her sister on the bank","I"))[0],"I"
+    assert_equal CryptoTools.break_xor(CryptoTools.xor_key("Alice was beginning to get very tired of sitting by her sister on the bank","I"))[0],"I"
   end
   def test_hamming_dist
     assert_equal CryptoTools.hamming_distance("this is a test","wokka wokka!!!"),37
