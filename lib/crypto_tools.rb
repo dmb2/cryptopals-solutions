@@ -164,7 +164,7 @@ class CryptoTools
         set[cipher_text.slice(block_length*i,block_length)]+=1
       }
       if set.values.inject{ |sum,x| sum + x}!=set.values.length
-        puts "ECB Detected!"
+        # puts "ECB Detected!"
         return l
       end
     }

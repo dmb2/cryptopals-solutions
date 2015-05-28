@@ -47,6 +47,31 @@ class BlockCrypto
     end
     return ct[1..-1].join
   end
+  def self.random_byte_string(nbytes)
+    return nbytes.times.map{ Random.rand(256) }.pack("C*")
+  end
+  def self.encryption_oracle(input)
+    key=random_byte_string(16)
+    ecb_cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+    ecb_cipher.encrypt
+    ecb_cipher.key=key
+    cbc_cipher = OpenSSL::Cipher.new 'AES-128-CBC'
+    cbc_cipher.encrypt
+    cbc_cipher.key=key
+    cbc_cipher.iv=random_byte_string(16)
+    padded_input=random_byte_string(5+rand(5))+input+random_byte_string(5+rand(5))
+    if rand(2)==0
+      return cbc_cipher.update(padded_input)+cbc_cipher.final
+    else
+      return ecb_cipher.update(padded_input)+ecb_cipher.final
+    end
+  end
+  def self.AES_128_ECB(input,key)
+      ecb_cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+      ecb_cipher.encrypt
+      ecb_cipher.key=key
+      return ecb_cipher.update(input)+ecb_cipher.final
+  end
   def self.aes_cbc_decrypt(cipher_text,key,iv)
     decipher = OpenSSL::Cipher.new 'AES-128-ECB'
     decipher.decrypt

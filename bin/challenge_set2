@@ -23,12 +23,75 @@ def challenge10
   end
 end
 def challenge11
-  
+  ecb_times=0
+  ntimes=1000
+  ntimes.times do |i| 
+    ecb_cipher_text=CryptoTools.detect_aes_ecb(BlockCrypto.encryption_oracle("A"*256))
+    if ecb_cipher_text.length > 0
+      ecb_times+=1
+    end
+  end
+  detected_frac=Float(ecb_times)/ntimes
+  if (detected_frac-0.5).abs < 0.1
+    puts "Challenge 11 passed!"
+  else
+    raise sprintf "Challenge 11 failed, fraction detected %.3g %% of %d",detected_frac,ntimes
+  end
+end
+def challenge12
+  unknown_string=Base64.decode64(["Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg",
+                                  "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq",
+                                  "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg",
+                                  "YnkK"].join)
+  # 1. Determine block size
+  secret_key=BlockCrypto.random_byte_string(16)
+  init_len=BlockCrypto.AES_128_ECB(unknown_string,secret_key).length
+  block_size=0
+  17.times do |i| 
+    len=BlockCrypto.AES_128_ECB("A"*i+unknown_string,secret_key).length
+    if len > init_len
+      block_size=len-init_len
+      break
+    end
+  end
+  printf "Step 1: Block size detected, length %d\n",block_size
+  # 2. Detect ECB
+  l=CryptoTools.detect_aes_ecb(BlockCrypto.AES_128_ECB("A"*256+unknown_string,secret_key))
+  if l!=""
+    puts "Step 2: Detected ECB"
+  else
+    raise "Did not detect ECB in challenge 12"
+  end
+  # 3. Make input block that is 1 byte short
+  input_block="A"*(block_size-1)
+  printf "Step 3: Short input block: %s, length: %d\n",input_block,input_block.length
+  # 4. Create a list of ciphertexts from all possible last bytes
+  block_dictionary=Hash.new("")
+  32.upto(126) do |c| 
+    block_dictionary[BlockCrypto.AES_128_ECB(input_block+c.chr,secret_key).slice(0,block_size)]=c.chr.to_s
+  end
+  puts "Step 4: Create dictionary of ciphertexts using all possible last bytes"
+  # 5. Match the output of the 1 byte short to the list created in 4
+  decoded_str=""
+  detected_byte=block_dictionary[BlockCrypto.AES_128_ECB(input_block+unknown_string,secret_key).slice(0,block_size)]
+  if detected_byte != ""
+    decoded_str+=detected_byte
+    puts decoded_str
+    if (block_size-decoded_str.length-1) > 0
+      input_block=(block_size-decoded_str.length-1)*"A"+decoded_str
+    else
+      input_block=decoded_str.slice(-(block_size-1),block_size-1)
+    end
+  end
+  # 6. Repeat for the next byte
 end
 def run_challenges
   challenge9
   challenge10
+  challenge11
+  challenge12
 end
 
-run_challenges
+challenge12
+# run_challenges
 
