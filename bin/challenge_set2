@@ -43,13 +43,17 @@ def challenge12
                                   "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq",
                                   "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg",
                                   "YnkK"].join)
-  # 1. Determine block size
+  # unknown_string="Yellow Submarines are cool"
+  puts Base64.encode64("Yellow Submarines are cool")
+  # 1. Determine block size and secret length
   secret_key=BlockCrypto.random_byte_string(16)
   init_len=BlockCrypto.AES_128_ECB(unknown_string,secret_key).length
   block_size=0
+  secret_len=0
   17.times do |i| 
     len=BlockCrypto.AES_128_ECB("A"*i+unknown_string,secret_key).length
     if len > init_len
+      secret_len=init_len-i
       block_size=len-init_len
       break
     end
@@ -63,26 +67,32 @@ def challenge12
     raise "Did not detect ECB in challenge 12"
   end
   # 3. Make input block that is 1 byte short
-  input_block="A"*(block_size-1)
-  printf "Step 3: Short input block: %s, length: %d\n",input_block,input_block.length
   # 4. Create a list of ciphertexts from all possible last bytes
-  block_dictionary=Hash.new("")
-  32.upto(126) do |c| 
-    block_dictionary[BlockCrypto.AES_128_ECB(input_block+c.chr,secret_key).slice(0,block_size)]=c.chr.to_s
-  end
-  puts "Step 4: Create dictionary of ciphertexts using all possible last bytes"
   # 5. Match the output of the 1 byte short to the list created in 4
+  # for each byte
+  #    3. make input block
+  #    4. build dictionary of byte combinations
+  #    5. check for byte in dictionary
+  #    5a. add byte to decoded string
   decoded_str=""
-  detected_byte=block_dictionary[BlockCrypto.AES_128_ECB(input_block+unknown_string,secret_key).slice(0,block_size)]
-  if detected_byte != ""
-    decoded_str+=detected_byte
-    puts decoded_str
-    if (block_size-decoded_str.length-1) > 0
-      input_block=(block_size-decoded_str.length-1)*"A"+decoded_str
-    else
-      input_block=decoded_str.slice(-(block_size-1),block_size-1)
+  input_len=(init_len-1)
+  # puts secret_len, unknown_string.length
+  secret_len.times do 
+    input_block="A"*input_len+decoded_str
+    printf "%s:%d\n",input_block,input_block.length
+    block_dictionary=Hash.new("")
+    32.upto(126) do |c| 
+      # puts input_block.slice(-block_size+1,block_size-1)+c.chr
+      block_dictionary[BlockCrypto.AES_128_ECB(input_block.slice(-block_size+1,block_size-1)+c.chr,secret_key).slice(0,block_size)]=c.chr.to_s
     end
+    cipher_text=BlockCrypto.AES_128_ECB("A"*input_len+unknown_string,secret_key)
+    detected_byte=block_dictionary[cipher_text.slice(((init_len/block_size)-1)*block_size,block_size)]
+    if detected_byte != ""
+      decoded_str+=detected_byte
+    end
+    input_len=(init_len-decoded_str.length-1)
   end
+  puts decoded_str
   # 6. Repeat for the next byte
 end
 def run_challenges
