@@ -43,65 +43,93 @@ def challenge12
                                   "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq",
                                   "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg",
                                   "YnkK"].join)
-  # unknown_string="Yellow Submarines are cool"
-  puts Base64.encode64("Yellow Submarines are cool")
-  # 1. Determine block size and secret length
-  secret_key=BlockCrypto.random_byte_string(16)
-  init_len=BlockCrypto.AES_128_ECB(unknown_string,secret_key).length
-  block_size=0
-  secret_len=0
-  17.times do |i| 
-    len=BlockCrypto.AES_128_ECB("A"*i+unknown_string,secret_key).length
-    if len > init_len
-      secret_len=init_len-i
-      block_size=len-init_len
-      break
-    end
-  end
-  printf "Step 1: Block size detected, length %d\n",block_size
-  # 2. Detect ECB
-  l=CryptoTools.detect_aes_ecb(BlockCrypto.AES_128_ECB("A"*256+unknown_string,secret_key))
-  if l!=""
-    puts "Step 2: Detected ECB"
+  decoded_str=BlockCrypto.break_aes_ecb(unknown_string)
+  if decoded_str!=unknown_string
+    raise "Challenge 12 failed!"
   else
-    raise "Did not detect ECB in challenge 12"
+    puts "Challenge 12 passed!"
+    puts decoded_str
   end
-  # 3. Make input block that is 1 byte short
-  # 4. Create a list of ciphertexts from all possible last bytes
-  # 5. Match the output of the 1 byte short to the list created in 4
-  # for each byte
-  #    3. make input block
-  #    4. build dictionary of byte combinations
-  #    5. check for byte in dictionary
-  #    5a. add byte to decoded string
-  decoded_str=""
-  input_len=(init_len-1)
-  # puts secret_len, unknown_string.length
-  secret_len.times do 
-    input_block="A"*input_len+decoded_str
-    printf "%s:%d\n",input_block,input_block.length
-    block_dictionary=Hash.new("")
-    32.upto(126) do |c| 
-      # puts input_block.slice(-block_size+1,block_size-1)+c.chr
-      block_dictionary[BlockCrypto.AES_128_ECB(input_block.slice(-block_size+1,block_size-1)+c.chr,secret_key).slice(0,block_size)]=c.chr.to_s
+end
+class Server
+  @@aes_key = BlockCrypto.random_byte_string(16)
+  def parse_cookie(cookie_str)
+    session = Hash.new("")
+    cookie_str.split("&").each do |pair| 
+      key,value=pair.split("=")
+      session[key]=value
     end
-    cipher_text=BlockCrypto.AES_128_ECB("A"*input_len+unknown_string,secret_key)
-    detected_byte=block_dictionary[cipher_text.slice(((init_len/block_size)-1)*block_size,block_size)]
-    if detected_byte != ""
-      decoded_str+=detected_byte
-    end
-    input_len=(init_len-decoded_str.length-1)
+    return session
   end
-  puts decoded_str
-  # 6. Repeat for the next byte
+  def encode_raw_cookie(session)
+    cookie=""
+    session.each do |key,value| 
+      cookie+=sprintf("%s=%s&",key,value)
+    end
+    return cookie.slice(0,cookie.length-1)
+  end
+  def sanitize(string)
+    return string.scan(/[^&=]/).join
+  end
+  def profile_for(email)
+    session = Hash.new("")
+    session["email"]=sanitize(email)
+    session["uid"]=10
+    session["role"]="user"
+    return encode_raw_cookie(session)
+  end
+  def issue_cookie(email_addr)
+    return Converters.str_to_hex(BlockCrypto.AES_128_ECB(profile_for(email_addr),@@aes_key))
+  end
+  def decode_cookie(hex_encoded_cookie)
+    ecb_decipher = OpenSSL::Cipher.new 'AES-128-ECB'
+    ecb_decipher.decrypt
+    ecb_decipher.key=@@aes_key
+    raw_cookie = ecb_decipher.update(Converters.hex_to_bytes(hex_encoded_cookie))+ecb_decipher.final
+    return parse_cookie(raw_cookie)
+  end
+  def admin?(cookie)
+    session = decode_cookie(cookie)
+    return session["role"]=="admin"
+  end
+end
+def challenge13
+  server = Server.new
+  email="fooAA@bar.com"
+  # carefuly aligned so role= is at the end of the second cipher text block
+  user_cookie=server.issue_cookie(email)
+  attack_email=("A"*10+"admin").pkcs7pad(26)
+  # carefuly aligned so admin+pkcs7padding is at the end of the second
+  # cipher text block
+  admin_cookie=server.issue_cookie(attack_email).blocks(32)[1]
+  if server.admin?(user_cookie.slice(0,64)+admin_cookie)
+    puts "Challenge 13 passed! Obtained admin access!"
+  else
+    raise "Challenge 13 failed, you are a normal user."
+  end
+end
+def challenge14
+  unknown_string=Base64.decode64(["Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg",
+                                  "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq",
+                                  "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg",
+                                  "YnkK"].join)
+  decoded_str=BlockCrypto.break_aes_ecb(unknown_string,true)
+  if decoded_str!=unknown_string
+    raise "Challenge 14 failed!"
+  else
+    puts "Challenge 14 passed!"
+    puts decoded_str
+  end
 end
 def run_challenges
   challenge9
   challenge10
   challenge11
   challenge12
+  challenge13
+  challenge14
 end
 
-challenge12
-# run_challenges
+
+run_challenges
 

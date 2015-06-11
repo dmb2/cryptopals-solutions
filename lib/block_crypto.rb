@@ -26,6 +26,13 @@ class String
     }
     return self+str
   end
+  def blocks(block_size)
+    blocks=[]
+    (Float(self.length)/block_size).ceil().times do |i| 
+      blocks.push(self.slice(i*block_size,block_size))
+    end
+    return blocks
+  end
 end
 
 class BlockCrypto
@@ -65,6 +72,66 @@ class BlockCrypto
     else
       return ecb_cipher.update(padded_input)+ecb_cipher.final
     end
+  end
+  def self.break_aes_ecb(unknown_string,variable_length=false)
+    # variable_length determines if the string changes length on
+    # repeated calls to the oracle
+    # 1. Determine block size and secret length
+    secret_key=BlockCrypto.random_byte_string(16)
+    prefix=''
+    if variable_length==true
+      prefix=BlockCrypto.random_byte_string(Random.rand(16))
+    end
+    init_len=BlockCrypto.AES_128_ECB(prefix+unknown_string,secret_key).length
+    block_size=0
+    secret_len=0
+    17.times do |i| 
+      len=BlockCrypto.AES_128_ECB(prefix+"A"*i+unknown_string,secret_key).length
+      if len > init_len
+        secret_len=init_len-i
+        block_size=len-init_len
+        break
+      end
+    end
+    printf "Detected length: %d Actual: %d\n",secret_len,unknown_string.length
+    # 2. Detect ECB
+    l=CryptoTools.detect_aes_ecb(BlockCrypto.AES_128_ECB(prefix+"A"*256+unknown_string,secret_key))
+    if l==""
+      raise "Did not detect ECB"
+    end
+    # 3. Make input block that is 1 byte short
+    # 4. Create a list of ciphertexts from all possible last bytes
+    # 5. Match the output of the 1 byte short to the list created in 4
+    # for each byte
+    #    3. make input block
+    #    4. build dictionary of byte combinations
+    #    5. check for byte in dictionary
+    #    5a. add byte to decoded string
+    decoded_str=""
+    input_len=(init_len-1)
+    # if a random number of bytes has been prepended, we have to strip
+    # one off each time we don't detect a byte in the oracle, if not
+    # we just take one
+    pad_char="\x00"
+    n_bytes=0
+    secret_len.times do 
+      input_len=(init_len-decoded_str.length-1)
+      input_block=pad_char*input_len+decoded_str
+      # puts input_block.inspect
+      block_dictionary=Hash.new("")
+      0.upto(255) do |c| 
+        block_dictionary[BlockCrypto.AES_128_ECB(input_block.slice(-block_size+1,block_size-1)+c.chr,secret_key).slice(0,block_size)]=c.chr.to_s
+      end
+      cipher_text=BlockCrypto.AES_128_ECB(prefix+pad_char*input_len+unknown_string,secret_key)
+      detected_byte=block_dictionary[cipher_text.slice(((init_len/block_size)-1)*block_size,block_size)]
+      if detected_byte != ""
+        decoded_str+=detected_byte
+      end
+      if detected_byte == pad_char
+        n_bytes+=1
+      end
+    end
+    return decoded_str.slice(n_bytes,decoded_str.length)
   end
   def self.AES_128_ECB(input,key)
       ecb_cipher = OpenSSL::Cipher.new 'AES-128-ECB'
