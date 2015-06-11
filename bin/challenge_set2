@@ -48,7 +48,6 @@ def challenge12
     raise "Challenge 12 failed!"
   else
     puts "Challenge 12 passed!"
-    puts decoded_str
   end
 end
 class Server
@@ -118,8 +117,27 @@ def challenge14
     raise "Challenge 14 failed!"
   else
     puts "Challenge 14 passed!"
-    puts decoded_str
   end
+end
+def challenge15
+  if "ICE ICE BABY\x04\x04\x04\x04".pkcs7strip != "ICE ICE BABY"
+    raise "Did not strip valid pkcs7 padding!"
+  end
+  begin
+    if "ICE ICE BABY\x05\x05\x05\x05".pkcs7strip != "ICE ICE BABY"
+      raise "Stripping pkcs7 failed!"
+    end
+  rescue EncodingError
+    puts "Detected invalid pkcs7 padding"
+    begin 
+      if "ICE ICE BABY\x01\x02\x03\x04".pkcs7strip != "ICE ICE BABY"
+        raise "Stripping pkcs7 failed!"
+      end
+    rescue EncodingError
+      puts "Detected invalid pkcs7 padding"
+    end
+  end
+  puts "Challenge 15 passed!"
 end
 def run_challenges
   challenge9
@@ -128,6 +146,7 @@ def run_challenges
   challenge12
   challenge13
   challenge14
+  challenge15
 end
 
 
