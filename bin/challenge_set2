@@ -3,6 +3,7 @@ require 'curb'
 require 'crypto_tools'
 require 'block_crypto'
 require 'openssl'
+require 'servers'
 
 def challenge9
   if Converters.str_to_hex("YELLOW SUBMARINE".pkcs7pad(20)).slice(32,8)!="04040404"
@@ -50,50 +51,9 @@ def challenge12
     puts "Challenge 12 passed!"
   end
 end
-class Server
-  @@aes_key = BlockCrypto.random_byte_string(16)
-  def parse_cookie(cookie_str)
-    session = Hash.new("")
-    cookie_str.split("&").each do |pair| 
-      key,value=pair.split("=")
-      session[key]=value
-    end
-    return session
-  end
-  def encode_raw_cookie(session)
-    cookie=""
-    session.each do |key,value| 
-      cookie+=sprintf("%s=%s&",key,value)
-    end
-    return cookie.slice(0,cookie.length-1)
-  end
-  def sanitize(string)
-    return string.scan(/[^&=]/).join
-  end
-  def profile_for(email)
-    session = Hash.new("")
-    session["email"]=sanitize(email)
-    session["uid"]=10
-    session["role"]="user"
-    return encode_raw_cookie(session)
-  end
-  def issue_cookie(email_addr)
-    return Converters.str_to_hex(BlockCrypto.AES_128_ECB(profile_for(email_addr),@@aes_key))
-  end
-  def decode_cookie(hex_encoded_cookie)
-    ecb_decipher = OpenSSL::Cipher.new 'AES-128-ECB'
-    ecb_decipher.decrypt
-    ecb_decipher.key=@@aes_key
-    raw_cookie = ecb_decipher.update(Converters.hex_to_bytes(hex_encoded_cookie))+ecb_decipher.final
-    return parse_cookie(raw_cookie)
-  end
-  def admin?(cookie)
-    session = decode_cookie(cookie)
-    return session["role"]=="admin"
-  end
-end
+
 def challenge13
-  server = Server.new
+  server = ECBServer.new
   email="fooAA@bar.com"
   # carefuly aligned so role= is at the end of the second cipher text block
   user_cookie=server.issue_cookie(email)
@@ -124,20 +84,31 @@ def challenge15
     raise "Did not strip valid pkcs7 padding!"
   end
   begin
-    if "ICE ICE BABY\x05\x05\x05\x05".pkcs7strip != "ICE ICE BABY"
-      raise "Stripping pkcs7 failed!"
-    end
-  rescue EncodingError
-    puts "Detected invalid pkcs7 padding"
+    "ICE ICE BABY\x05\x05\x05\x05".pkcs7strip
+  rescue EncodingError => ex1
     begin 
-      if "ICE ICE BABY\x01\x02\x03\x04".pkcs7strip != "ICE ICE BABY"
-        raise "Stripping pkcs7 failed!"
-      end
-    rescue EncodingError
-      puts "Detected invalid pkcs7 padding"
+      "ICE ICE BABY\x01\x02\x03\x04".pkcs7strip
+    rescue EncodingError => ex2
     end
   end
+  if ex1.message != ex2.message
+    raise "Challenge 15 failed!"
+  end
   puts "Challenge 15 passed!"
+end
+def challenge16
+  server = CBCServer.new
+  user_data="A"*16+":admin<true"
+  cookie=server.issue_cookie(user_data)
+  cipher_text = Converters.hex_to_bytes(cookie);
+  cipher_text[32]=[cipher_text[32].bytes[0]^0x01].pack("C*")
+  cipher_text[38]=[cipher_text[38].bytes[0]^0x01].pack("C*")
+  new_cookie=Converters.str_to_hex(cipher_text);
+  if server.admin?(new_cookie)==true
+    puts "Challenge 16 passed! Admin Access granted!"
+  else
+    raise "Challenge 16 failed!"
+  end
 end
 def run_challenges
   challenge9
@@ -147,6 +118,8 @@ def run_challenges
   challenge13
   challenge14
   challenge15
+  challenge16
+  puts "Congratulations, Set 2 complete!"
 end
 
 

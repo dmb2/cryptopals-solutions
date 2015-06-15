@@ -4,12 +4,19 @@ require 'openssl'
 class String
   def pkcs7strip
     str=self.clone
-    nbytes=str[-1].bytes[0]
-    nbytes.times{
-      if str[-1].bytes[0]==nbytes
-        str.slice!(-1)
+    # look at the last byte to determine padding amount
+    nbytes=str.bytes[-1]
+    # look at length-nbytes and make sure that it is also nbytes
+    # slice off nbytes and verify that each on is nbytes
+    if str.bytes[-nbytes] != nbytes
+      raise EncodingError,"Invalid PKCS7 Padding"
+    end
+    pad_block=str.slice!(-nbytes,nbytes)
+    pad_block.bytes.map do |byte| 
+      if byte != nbytes
+        raise EncodingError,"Invalid PKCS7 Padding"
       end
-    }
+    end
     return str
   end
   def pkcs7pad(block_size)

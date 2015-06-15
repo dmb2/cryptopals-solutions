@@ -8,7 +8,8 @@ Gem::Specification.new do |s|
   s.description = 'Tools for completing matasano\'s crypto challenges'
   s.authors = ["David Bjergaard"]
   s.email = 'dbjergaard@gmail.com'
-  s.files = ["lib/converters.rb","lib/block_crypto.rb","lib/crypto_tools.rb"]
+  s.files = ["lib/converters.rb", "lib/servers.rb",
+             "lib/block_crypto.rb","lib/crypto_tools.rb"]
   s.homepage = 'https://dbjergaard.github.io/'
   s.license = 'MIT'
 end
