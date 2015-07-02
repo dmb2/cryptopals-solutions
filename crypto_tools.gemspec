@@ -1,6 +1,6 @@
 Gem::Specification.new do |s| 
   s.name = 'crypto_tools'
-  s.version = '0.0.2'
+  s.version = '0.0.3'
   s.executables << 'challenge_set1'
   s.executables << 'challenge_set2'
   s.date = '2015-05-06'
