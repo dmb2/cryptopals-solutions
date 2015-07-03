@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby 
+require 'curb'
+require 'crypto_tools'
+require 'block_crypto'
+require 'openssl'
+require 'servers'
+
+def flip_byte(cipher_block,i,tb,pb)
+  bytes=cipher_block.bytes()
+  bytes[-i]=(bytes[-i]^tb)^pb
+  return bytes.pack("C*")
+end
+def challenge17
+  server = CBCPaddingServer.new
+  iv,session_cookie = server.get_session_cookie()
+  puts session_cookie.blocks(16).length
+  decoded_bytes=[]
+  block=session_cookie.blocks(16)[-2]
+  target_block=session_cookie.blocks(16)[-1]
+  256.times do |byte| 
+    pad_byte = 1
+    if byte == pad_byte
+      next
+    end
+    edited_block=flip_byte(block,1,byte,pad_byte)
+    if server.valid_decrypt(edited_block+target_block,iv)
+      decoded_bytes+=[byte]
+    else
+      next
+    end
+  end
+end
+
+def run_challenges
+  challenge17
+end
+
+run_challenges

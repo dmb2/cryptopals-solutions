@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require 'uri'
+
+options = {:encode => false,
+           :decode => false}
+OptionParser.new do |opt| 
+  opt.on('-d','--decode','URL Decode'){ options[:decode]=true}
+  opt.on('-e','--encode','URL Encode'){ options[:encode]=true}
+end.parse!
+ARGV.each do |urlstr| 
+  if options[:encode]
+    puts URI.encode(urlstr)
+  end
+  if options[:decode]
+    puts URI.decode(urlstr)
+  end
+end
