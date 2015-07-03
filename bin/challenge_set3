@@ -10,25 +10,40 @@ def flip_byte(cipher_block,i,tb,pb)
   bytes[-i]=(bytes[-i]^tb)^pb
   return bytes.pack("C*")
 end
+def create_edit_text(input_block,decoded_bytes,pad_byte)
+  edited_block=input_block
+  1.upto(pad_byte) do |i| 
+    edited_block=flip_byte(edited_block,i, decoded_bytes[i-1], pad_byte)
+  end
+  return edited_block
+end
 def challenge17
   server = CBCPaddingServer.new
   iv,session_cookie = server.get_session_cookie()
-  puts session_cookie.blocks(16).length
-  decoded_bytes=[]
-  block=session_cookie.blocks(16)[-2]
-  target_block=session_cookie.blocks(16)[-1]
-  256.times do |byte| 
-    pad_byte = 1
-    if byte == pad_byte
-      next
+  block_size=16
+  puts session_cookie.blocks(block_size).length
+  blocks=session_cookie.blocks(block_size)
+  blocks=[iv]+blocks
+  decoded_byte_string=[]
+  1.upto(blocks.length-1) do |bi| 
+    decoded_bytes=[]
+    block=blocks[-bi-1]
+    target_block=blocks[-bi]
+    1.upto(block_size) do |pad_byte| 
+      256.times do |byte| 
+        if byte == pad_byte
+          next
+        end
+        decoded_bytes[pad_byte-1]=byte
+        edited_block=create_edit_text(block,decoded_bytes,pad_byte)
+        if server.valid_decrypt(edited_block+target_block,iv)
+          break
+        end
+      end
     end
-    edited_block=flip_byte(block,1,byte,pad_byte)
-    if server.valid_decrypt(edited_block+target_block,iv)
-      decoded_bytes+=[byte]
-    else
-      next
-    end
+    decoded_byte_string+=decoded_bytes
   end
+  puts decoded_byte_string.pack("C*").reverse.inspect
 end
 
 def run_challenges

@@ -18,8 +18,8 @@ class CBCPaddingServer
   # @@iv = BlockCrypto.random_byte_string(16)
   def get_session_cookie
     iv=BlockCrypto.random_byte_string(16)
-    # plain_text=Base64.decode64(@@sessions[Random.rand(@@sessions.length)])
-    plain_text="Alice was beginning to get very tired of sitting by her sister on the"
+    plain_text=Base64.decode64(@@sessions[Random.rand(@@sessions.length)])
+    # plain_text="Alice was beginning to get very tired of sitting by her sister on the"
     return iv,BlockCrypto.aes_cbc_encrypt(plain_text,@@aes_key,iv)
   end
   def valid_decrypt(session_cookie,iv)
