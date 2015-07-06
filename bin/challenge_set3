@@ -21,7 +21,6 @@ def challenge17
   server = CBCPaddingServer.new
   iv,session_cookie = server.get_session_cookie()
   block_size=16
-  puts session_cookie.blocks(block_size).length
   blocks=session_cookie.blocks(block_size)
   blocks=[iv]+blocks
   decoded_byte_string=[]
@@ -31,7 +30,7 @@ def challenge17
     target_block=blocks[-bi]
     1.upto(block_size) do |pad_byte| 
       256.times do |byte| 
-        if byte == pad_byte
+        if byte == pad_byte and pad_byte==1
           next
         end
         decoded_bytes[pad_byte-1]=byte
@@ -43,7 +42,12 @@ def challenge17
     end
     decoded_byte_string+=decoded_bytes
   end
-  puts decoded_byte_string.pack("C*").reverse.inspect
+  plain_text=decoded_byte_string.pack("C*").reverse.pkcs7strip
+  if plain_text.scan(/[^[:print:]]/).length > 1
+    raise "Challenge 17 failed!"
+  else
+    puts "Challenge 17 passed!"
+  end
 end
 
 def run_challenges
