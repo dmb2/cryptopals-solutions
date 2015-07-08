@@ -2,6 +2,7 @@
 require 'curb'
 require 'crypto_tools'
 require 'block_crypto'
+require 'stream_cipher'
 require 'openssl'
 require 'servers'
 
@@ -49,9 +50,17 @@ def challenge17
     puts "Challenge 17 passed!"
   end
 end
-
+def challenge18
+  message="Hello Dave, this is a secret"
+  cipher_text=StreamCrypto.aes_ctr_encrypt(message,"\0"*8,"YELLOW SUBMARINE")
+  clear_text=StreamCrypto.aes_ctr_decrypt(clear_text,"\0"*8,"YELLOW SUBMARINE")
+  if clear_text!=message
+    raise "Challenge 18 is broken!"
+  end
+end
 def run_challenges
   challenge17
+  challenge18
 end
 
 run_challenges
