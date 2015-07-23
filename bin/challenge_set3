@@ -5,6 +5,7 @@ require 'block_crypto'
 require 'stream_cipher'
 require 'openssl'
 require 'servers'
+require 'base64'
 
 def flip_byte(cipher_block,i,tb,pb)
   bytes=cipher_block.bytes()
@@ -52,15 +53,108 @@ def challenge17
 end
 def challenge18
   message="Hello Dave, this is a secret"
-  cipher_text=StreamCrypto.aes_ctr_encrypt(message,"\0"*8,"YELLOW SUBMARINE")
-  clear_text=StreamCrypto.aes_ctr_decrypt(clear_text,"\0"*8,"YELLOW SUBMARINE")
-  if clear_text!=message
-    raise "Challenge 18 is broken!"
+  # cipher_text=StreamCrypto.aes_ctr_encrypt(message,"\0"*8,"YELLOW SUBMARINE")
+  cipher_text=Base64.decode64("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==")
+  clear_text=StreamCrypto.aes_ctr_decrypt(cipher_text,"\0"*8,"YELLOW SUBMARINE")
+  if clear_text!="Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby "
+    raise "Challenge 18 failed!"
+  else
+    puts "Challenge 18 passed!"
+  end
+end
+def test_word(cipher_texts,word)
+  # scan the list of cipher_texts, assuming that word appears at some
+  # point in the plaintext, this gives a possible chunk of the
+  # keystream. Then check the other cipher texts to see if they decode
+  # to ascii values.  If so, the keystream section is valid so insert
+  # it into the decoded keystream.  Return new keystream for the next
+  # call
+  cipher_texts.each do |citext| 
+    minscore=999999
+    validkchunk=""
+    valididx=-9999
+    (citext.length-word.length).times do |i| 
+      keychunk = CryptoTools.xor_str(word,citext.slice(i,word.length))
+      pt_chunks=""
+      cipher_texts.each do |cjtext|
+        if citext == cjtext
+          next
+        end
+        chunk=cjtext.slice(i,word.length)
+        pt_guess=""
+        if chunk
+          pt_guess= CryptoTools.xor_str(keychunk.slice(0,chunk.length),chunk)
+        end
+        if (pt_guess.scan(/[^[:print:]]/).length > 1 or
+            Float(pt_guess.scan(/[^[A-Za-z ]]/).length)/pt_guess.length > 0.30)
+          next
+        else
+          pt_chunks << pt_guess 
+        end
+      end
+      if CryptoTools.score_string(pt_chunks) < minscore
+        minscore = CryptoTools.score_string(pt_chunks)
+        validkchunk=keychunk
+      end
+    end
+    puts validkchunk.length
+  end
+end
+def challenge19
+  texts=["SSBoYXZlIG1ldCB0aGVtIGF0IGNsb3NlIG9mIGRheQ==",
+         "Q29taW5nIHdpdGggdml2aWQgZmFjZXM=",
+         "RnJvbSBjb3VudGVyIG9yIGRlc2sgYW1vbmcgZ3JleQ==",
+         "RWlnaHRlZW50aC1jZW50dXJ5IGhvdXNlcy4=",
+         "SSBoYXZlIHBhc3NlZCB3aXRoIGEgbm9kIG9mIHRoZSBoZWFk",
+         "T3IgcG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA==",
+         "T3IgaGF2ZSBsaW5nZXJlZCBhd2hpbGUgYW5kIHNhaWQ=",
+         "UG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA==",
+         "QW5kIHRob3VnaHQgYmVmb3JlIEkgaGFkIGRvbmU=",
+         "T2YgYSBtb2NraW5nIHRhbGUgb3IgYSBnaWJl",
+         "VG8gcGxlYXNlIGEgY29tcGFuaW9u",
+         "QXJvdW5kIHRoZSBmaXJlIGF0IHRoZSBjbHViLA==",
+         "QmVpbmcgY2VydGFpbiB0aGF0IHRoZXkgYW5kIEk=",
+         "QnV0IGxpdmVkIHdoZXJlIG1vdGxleSBpcyB3b3JuOg==",
+         "QWxsIGNoYW5nZWQsIGNoYW5nZWQgdXR0ZXJseTo=",
+         "QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=",
+         "VGhhdCB3b21hbidzIGRheXMgd2VyZSBzcGVudA==",
+         "SW4gaWdub3JhbnQgZ29vZCB3aWxsLA==",
+         "SGVyIG5pZ2h0cyBpbiBhcmd1bWVudA==",
+         "VW50aWwgaGVyIHZvaWNlIGdyZXcgc2hyaWxsLg==",
+         "V2hhdCB2b2ljZSBtb3JlIHN3ZWV0IHRoYW4gaGVycw==",
+         "V2hlbiB5b3VuZyBhbmQgYmVhdXRpZnVsLA==",
+         "U2hlIHJvZGUgdG8gaGFycmllcnM/",
+         "VGhpcyBtYW4gaGFkIGtlcHQgYSBzY2hvb2w=",
+         "QW5kIHJvZGUgb3VyIHdpbmdlZCBob3JzZS4=",
+         "VGhpcyBvdGhlciBoaXMgaGVscGVyIGFuZCBmcmllbmQ=",
+         "V2FzIGNvbWluZyBpbnRvIGhpcyBmb3JjZTs=",
+         "SGUgbWlnaHQgaGF2ZSB3b24gZmFtZSBpbiB0aGUgZW5kLA==",
+         "U28gc2Vuc2l0aXZlIGhpcyBuYXR1cmUgc2VlbWVkLA==",
+         "U28gZGFyaW5nIGFuZCBzd2VldCBoaXMgdGhvdWdodC4=",
+         "VGhpcyBvdGhlciBtYW4gSSBoYWQgZHJlYW1lZA==",
+         "QSBkcnVua2VuLCB2YWluLWdsb3Jpb3VzIGxvdXQu",
+         "SGUgaGFkIGRvbmUgbW9zdCBiaXR0ZXIgd3Jvbmc=",
+         "VG8gc29tZSB3aG8gYXJlIG5lYXIgbXkgaGVhcnQs",
+         "WWV0IEkgbnVtYmVyIGhpbSBpbiB0aGUgc29uZzs=",
+         "SGUsIHRvbywgaGFzIHJlc2lnbmVkIGhpcyBwYXJ0",
+         "SW4gdGhlIGNhc3VhbCBjb21lZHk7",
+         "SGUsIHRvbywgaGFzIGJlZW4gY2hhbmdlZCBpbiBoaXMgdHVybiw=",
+         "VHJhbnNmb3JtZWQgdXR0ZXJseTo=",
+         "QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4="]
+  cipher_texts=[]
+  key="j\xFE\xC59\x18Z\xB4\xFF\xF0\xE0G\x96P\xF7U@"
+  texts.each do |text| 
+    cipher_texts+=[StreamCrypto.aes_ctr_encrypt(Base64.decode64(text),"\0"*8,key)]
+  end
+  test_word(cipher_texts," the ")
+  cipher_texts.each do |text| 
+    # puts text.inspect
   end
 end
 def run_challenges
-  challenge17
-  challenge18
+  # challenge17
+  # challenge18
+  challenge19
 end
 
 run_challenges

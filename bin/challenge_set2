@@ -80,14 +80,17 @@ def challenge14
   end
 end
 def challenge15
-  if "ICE ICE BABY\x04\x04\x04\x04".pkcs7strip != "ICE ICE BABY"
+  str1="ICE ICE BABY\x04\x04\x04\x04"
+  str2="ICE ICE BABY\x05\x05\x05\x05"
+  str3="ICE ICE BABY\x01\x02\x03\x04"
+  if str1.pkcs7strip != "ICE ICE BABY"
     raise "Did not strip valid pkcs7 padding!"
   end
   begin
-    "ICE ICE BABY\x05\x05\x05\x05".pkcs7strip
+    str2.pkcs7strip
   rescue EncodingError => ex1
     begin 
-      "ICE ICE BABY\x01\x02\x03\x04".pkcs7strip
+      str3.pkcs7strip
     rescue EncodingError => ex2
     end
   end

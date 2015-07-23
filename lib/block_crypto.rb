@@ -27,6 +27,7 @@ class String
     if nbytes < 0
       raise EncodingError,"Trying to pad a string longer than the block size!"
     end
+    nbytes = nbytes == 0 ? block_size : nbytes
     str=""
     nbytes.times{
       str+=nbytes.chr
@@ -45,15 +46,17 @@ end
 class BlockCrypto
   def self.aes_cbc_encrypt(clear_text,key,iv)
     cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+    cipher.padding = 0
     cipher.encrypt
     cipher.key=key
     # cbc magic
     block_size=iv.length
-    blocks=[]
-    (Float(clear_text.length)/block_size).ceil().times do |i| 
-      blocks.push(clear_text.slice(i*block_size,block_size))
-    end
+    blocks=clear_text.blocks(block_size)
     blocks[-1]=blocks[-1].pkcs7pad(block_size)
+    if blocks[-1].length !=block_size
+      pad_blocks=blocks.slice!(-1,1)[0].blocks(block_size)
+      blocks+=pad_blocks
+    end
     blocks.unshift(iv)
     ct = [iv]
     1.upto(blocks.length-1) do |i| 
