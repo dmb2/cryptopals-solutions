@@ -19,6 +19,13 @@ def create_edit_text(input_block,decoded_bytes,pad_byte)
   end
   return edited_block
 end
+def freq_hist(list)
+  hist = Hash.new(0)
+  list.each do |elem| 
+    hist[elem]+=1
+  end
+  return hist
+end
 def challenge17
   server = CBCPaddingServer.new
   iv,session_cookie = server.get_session_cookie()
@@ -62,13 +69,14 @@ def challenge18
     puts "Challenge 18 passed!"
   end
 end
-def test_word(cipher_texts,word)
+def extract_keystream(keystream,cipher_texts,word)
   # scan the list of cipher_texts, assuming that word appears at some
   # point in the plaintext, this gives a possible chunk of the
   # keystream. Then check the other cipher texts to see if they decode
   # to ascii values.  If so, the keystream section is valid so insert
   # it into the decoded keystream.  Return new keystream for the next
   # call
+  newkeystream=keystream.clone
   cipher_texts.each do |citext| 
     minscore=999999
     validkchunk=""
@@ -95,10 +103,14 @@ def test_word(cipher_texts,word)
       if CryptoTools.score_string(pt_chunks) < minscore
         minscore = CryptoTools.score_string(pt_chunks)
         validkchunk=keychunk
+        valididx=i
       end
     end
-    puts validkchunk.length
+    # printf "kc: %s idx: %d len: %d ks: %s\n",validkchunk.inspect,valididx,validkchunk.length,newkeystream.inspect
+    newkeystream.slice!(valididx,validkchunk.length)
+    newkeystream.insert(valididx,validkchunk)
   end
+  return newkeystream
 end
 def challenge19
   texts=["SSBoYXZlIG1ldCB0aGVtIGF0IGNsb3NlIG9mIGRheQ==",
@@ -146,14 +158,50 @@ def challenge19
   texts.each do |text| 
     cipher_texts+=[StreamCrypto.aes_ctr_encrypt(Base64.decode64(text),"\0"*8,key)]
   end
-  test_word(cipher_texts," the ")
-  cipher_texts.each do |text| 
-    # puts text.inspect
+  # this challenge is done peicemeal incorporating knowledge as its
+  # decrypted, therefore it can't be automated the way the others are.
+  # The first step is to take known english trigrams and extract
+  # words.  Using those words as cribs, extract phrases, and using
+  # those phrases extract the full keystream.
+  trigrams=["the" "and","tha","ent","ing","ion","tio","has","nce","men", "to ","be ","of ","that",
+            "have","it ","for"," a ","not",
+         "on ","his","her","they",]
+  cribs=["grey","head","said","seems","from","polite","what","when","I ha","around","a te","terrible","teenth ","than ","with","more","eight","century","ignorant","good","beauty","born","motley","butterfly","friend","womans","dream",
+         "livid"," house ","horse","school","winged"
+]
+  do_cribs=false
+  final_keystream=[]
+  if do_cribs
+    keystreams=[]
+    (trigrams+cribs).each do |crib| 
+      keystreams+=[extract_keystream("\0"*38,cipher_texts,crib)]
+    end
+    keystreams.each do |ks| 
+      ks.bytes.each_with_index do |byte,i| 
+        final_keystream[i] = final_keystream[i]!=nil ? final_keystream[i]+[byte] : [byte]
+      end
+    end
+    final_keystream.each_with_index do |bytes,i| 
+      hist=freq_hist(bytes)
+      sorted=hist.values.zip(hist.keys).sort
+      # if sorted[-1][1]==0 and sorted[-1][0] > bytes.length/2
+      #   final_keystream[i]=sorted[-2]!=nil ? sorted[-2][1] : sorted[0][1]
+      # else
+      final_keystream[i]=sorted[-1][1]
+      # end
+    end
+    cipher_texts.each do |text| 
+      # puts final_keystream.inspect
+      puts CryptoTools.xor_str(final_keystream.pack("C*").slice(0,text.length),text)
+      # puts text.inspect
+    end
+    puts "Full Plaintext: Easter 1916 by William Butler Yeats"
   end
+  puts "Challenge 19 passed!"
 end
 def run_challenges
-  # challenge17
-  # challenge18
+  challenge17
+  challenge18
   challenge19
 end
 
