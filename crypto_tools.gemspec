@@ -10,6 +10,7 @@ Gem::Specification.new do |s|
   s.authors = ["David Bjergaard"]
   s.email = 'dbjergaard@gmail.com'
   s.files = ["lib/converters.rb",
+             "lib/string_utils.rb",
              "lib/servers.rb",
              "lib/stream_cipher.rb",
              "lib/block_crypto.rb",

@@ -1,6 +1,8 @@
 # coding: utf-8
 require 'converters'
 require 'block_crypto'
+require 'stream_cipher'
+require 'string_utils'
 
 class CryptoTools 
   def self.xor_str(str_a,str_b)
@@ -70,7 +72,7 @@ class CryptoTools
   def self.break_xor(cipher_text,strict_ascii=true)
     key=''
     minscore=1e10
-    for c in 32..126
+    for c in 0..255
       result = xor_key(cipher_text,c.chr.to_s)
       if strict_ascii and (result.scan(/[^[:print:]]/).length > 1 or
         Float(result.scan(/[^[A-Za-z ]]/).length)/result.length > 0.30)
@@ -92,6 +94,24 @@ class CryptoTools
       num+=1
     end
     return num
+  end
+  def self.undiffuse(y,c,b,dir=:left)
+    # this is written for the 32 bit mersenne rng, inverts part of the
+    # tempering function used in the mersenne twister
+    
+    #unfortunately we can't call diffuse directly since the
+    #MersenneTwisterRng has an internal state
+    mtrng=MersenneTwisterRng.new(1234)
+    ((32.0/c).floor).times do
+      y=mtrng.diffuse(y,c,b,dir)
+    end
+    return y
+  end
+  def self.untemper(y)
+    y = self.undiffuse(y,18,0xffffffff,:right)
+    y = self.undiffuse(y,15,0xefc60000,:left)
+    y = self.undiffuse(y,7,0x9d2c5680,:left)
+    y = self.undiffuse(y,11,0xffffffff,:right)
   end
   def self.hamming_distance(str1,str2)
     if str1.length != str2.length
@@ -140,14 +160,14 @@ class CryptoTools
     }
     return keylen
   end
-  def self.break_xor_key(cipher_text,keylen)
+  def self.break_xor_key(cipher_text,keylen,strict_ascii=false)
     blocks=[]
     key_str=""
     (Float(cipher_text.length)/keylen).floor().times{ |i|
       blocks+=[cipher_text.slice(keylen*i,keylen).bytes]
     }
     blocks.transpose.each { |list|
-      key,score=break_xor(list.pack("C*"),false)
+      key,score=break_xor(list.pack("C*"),strict_ascii)
       key_str+=key
     }
     return key_str

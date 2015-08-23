@@ -199,10 +199,55 @@ def challenge19
   end
   puts "Challenge 19 passed!"
 end
+def challenge20
+  text = Curl.get("http://cryptopals.com/static/challenge-data/20.txt")
+  key = BlockCrypto.random_byte_string(16)
+  cipher_texts=[]
+  texts=text.body_str.split(/\n/)
+  minlen=texts.map{ |x| Base64.decode64(x).length }.min
+  texts.each do |line| 
+    pt=Base64.decode64(line)
+    cipher_texts+=[StreamCrypto.aes_ctr_encrypt(pt.slice(0,minlen),"\0"*8,key)]
+  end
+  keystream=CryptoTools.break_xor_key(cipher_texts.join(""),minlen,true)
+  true_ks=StreamCrypto.aes_ctr_encrypt("\0"*minlen,"\0"*8,key)
+  # puts Converters.str_to_hex(keystream)
+  # puts Converters.str_to_hex(true_ks)
+  plain_texts=[]
+  cipher_texts.each do |line| 
+    plain_texts+=[CryptoTools.xor_str(line,keystream)]
+  end
+  if plain_texts[-1]!='And we outta here / Yo, what happened to peace? / Pea'
+    raise "Challenge 20 failed!"
+  else
+    puts "Challenge 20 passed!"
+  end
+end
+def challenge21
+  ## leet people seed this with the current timestamp... 
+  mtrng=MersenneTwisterRng.new(1234)
+  prng=Random.new(1234)
+  # do it a few times to make sure that no one is messing around, but
+  # not so many that we wait too long
+  100000.times do 
+    a=prng.rand(2**32)
+    b=mtrng.extract_number
+    if a!=b
+      raise sprintf("Your implementation doesn't match Ruby's output, yours: %d ruby's: %d",b,a)
+    end
+  end
+  puts "Challenge 21 passed!"
+end
+def challenge22
+  
+end
 def run_challenges
-  challenge17
-  challenge18
-  challenge19
+  # challenge17
+  # challenge18
+  # challenge19
+  # challenge20
+  challenge21
+  # challenge22
 end
 
 run_challenges

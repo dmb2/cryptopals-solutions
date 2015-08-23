@@ -1,7 +1,7 @@
 require 'minitest/autorun'
 require 'block_crypto'
 require 'crypto_tools'
-
+require 'stream_cipher'
 class CryptoToolsTest < MiniTest::Test
   def test_xor_key
     assert_equal Converters.str_to_hex(CryptoTools.xor_key("Hello World","ICE")), "012629252c651e2c372527"
@@ -28,6 +28,27 @@ class CryptoToolsTest < MiniTest::Test
   def test_nbits
     assert_equal CryptoTools.nbits(31415926),18
   end
+  def test_detect_aes_ecb
+    input=BlockCrypto.AES_128_ECB("A"*256,"A"*16)
+    output=CryptoTools.detect_aes_ecb(input)
+    assert_equal input,output
+  end
+  def test_undiffuse
+    y=(0xFFFFFFFF-1)
+    c=17
+    b=0x9d2c5680
+    mtrng=MersenneTwisterRng.new(1234)
+    # diffused=mtrng.diffuse(y,c,b,:left)
+    # assert_equal y,CryptoTools.undiffuse(diffused,c,b)
+    diffused=mtrng.diffuse(y,c,b,:right)
+    assert_equal CryptoTools.undiffuse(diffused,c,b),y
+  end
+  # def test_untemper
+  #   y=223154134
+  #   mtrng=MersenneTwisterRng.new(1234)
+  #   tempered=mtrng.temper(y)
+  #   assert_equal CryptoTools.untemper(y),y
+  # end
 end
 
 class ConvertersTest < MiniTest::Test
@@ -69,4 +90,38 @@ conversations?'"
       clear_text=BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv)
       assert_equal clear_text,test_str
   end
+  def test_random_byte_string
+    rand_string = BlockCrypto.random_byte_string(17)
+    assert_equal 17,rand_string.length
+  end
 end
+class StreamCryptoTest < MiniTest::Test
+  def test_aes_ctr_encrypt_decrypt
+    nonce="\0"*8
+    key="YELLOW SUBMARINE"
+    test_str="Alice was beginning to get very tired of sitt
+ing by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversations?'"
+    encrypted=StreamCrypto.aes_ctr_encrypt(test_str,nonce,key)
+    assert_equal StreamCrypto.aes_ctr_decrypt(encrypted,nonce,key),test_str
+  end
+end 
+class MersenneTwisterTest < MiniTest::Test
+  def test_mersene_twister_rng
+    mtrng=MersenneTwisterRng.new(1234)
+    prng=Random.new(1234)
+    mtrng_vals=[]
+    prng_vals=[]
+    # Tap the rng 5 times to make sure that its state gets twisted at
+    # least 5 times
+    (624*5).times do 
+      mtrng_vals+=[prng.rand(2**32)]
+      prng_vals+=[mtrng.extract_number]
+    end
+    assert_equal mtrng_vals,prng_vals
+  end
+end
+

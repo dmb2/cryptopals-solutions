@@ -3,34 +3,50 @@ require 'openssl'
 require 'block_crypto'
 
 class MersenneTwisterRng
-  @@MT = [0]*624
-  @@index = 0 
-  def self.init(seed)
-    @@MT[0] = seed
-    1.upto(624) do |i| 
-      @@MT[i]= Fixnum(1812433253*(@@MT[i-1] ^ @@MT[i-1]>>30)+i)
+  @@N = 624
+  @@M = 397
+  @@A = 0x9908b0df
+  @@idx = @@N
+  @@mt = [0]*@@N
+  def int32(x)
+    return (0xffffffff & x)
+  end
+  def initialize(seed)
+    @@mt[0] = seed
+    1.upto(@@N) do |i| 
+      @@mt[i] = self.int32(1812433253*(@@mt[i-1]^(@@mt[i-1]>>30))+i)
     end
   end
-  def self.rand()
-    if @@index == 0
-      generate_numbers
+  def extract_number
+    if @@idx >= @@N
+      twist
     end
-    y = @@MT[@@index]
-    y = y ^ y >> 11
-    y = y ^ y << 7 & 2636928640
-    y = y ^ y << 15 & 4022730752
-    y = y ^ y >> 18
-    index=(index+1)%624
-    return Fixnum(y)
+    result = temper(@@mt[@@idx])
+    @@idx+=1
+    return result
   end
-  def self.generate_numbers
-    624.times do |i| 
-      y = Fixnum((@@MT[i]&0x80000000)+@@MT[(i+1)%624]&0x7fffffff)
-      @@MT[i]=@@MT[(i+397)%624]^y >> 1
-      if not y%2
-        @@MT[i]=@@MT[i]^0x9908b0df
+  def diffuse(y,c,b,dir=:left)
+    if dir!=:left and dir!=:right
+      raise sprintf("Invalid direction: %s",dir.inspect)
+    end
+    return y ^ ((dir==:left ? y << c : y >> c) & b)
+  end
+  def temper(y)
+    y = self.diffuse(y,11,0xffffffff,:right)
+    y = self.diffuse(y,7,0x9d2c5680,:left)
+    y = self.diffuse(y,15,0xefc60000,:left)
+    return self.diffuse(y,18,0xffffffff,:right)
+  end
+  def twist
+    @@N.times do |i| 
+      y = self.int32((@@mt[i] & 0x80000000) +
+                (@@mt[(i+1)%@@N] & 0x7fffffff))
+      @@mt[i] = @@mt[(i+@@M)%@@N] ^ y >> 1
+      if y%2 != 0
+        @@mt[i]^=@@A
       end
     end
+    @@idx=0
   end
 end
 
