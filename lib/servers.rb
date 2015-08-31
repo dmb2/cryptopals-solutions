@@ -14,9 +14,9 @@ class CBCPaddingServer
               "MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=",
               "MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=",
               "MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93" ]
-  @@aes_key = BlockCrypto.random_byte_string(16)
+  @@aes_key = CryptoTools.random_byte_string(16)
   def get_session_cookie
-    iv=BlockCrypto.random_byte_string(16)
+    iv=CryptoTools.random_byte_string(16)
     plain_text=Base64.decode64(@@sessions[Random.rand(@@sessions.length)])
     return iv,BlockCrypto.aes_cbc_encrypt(plain_text,@@aes_key,iv)
   end
@@ -31,7 +31,7 @@ class CBCPaddingServer
   end
 end
 class CBCServer
-  @@aes_key = BlockCrypto.random_byte_string(16)
+  @@aes_key = CryptoTools.random_byte_string(16)
   def issue_cookie(userdata)
     raw_cookie_str="comment1=cooking%20MCs;userdata="
     raw_cookie_str+=sanitize(userdata)
@@ -64,7 +64,7 @@ class CBCServer
 end
 
 class ECBServer
-  @@aes_key = BlockCrypto.random_byte_string(16)
+  @@aes_key = CryptoTools.random_byte_string(16)
   def parse_cookie(cookie_str)
     session = Hash.new("")
     cookie_str.split("&").each do |pair| 

@@ -23,19 +23,16 @@ class BlockCrypto
     end
     return ct[1..-1].join
   end
-  def self.random_byte_string(nbytes)
-    return nbytes.times.map{ Random.rand(256) }.pack("C*")
-  end
   def self.encryption_oracle(input)
-    key=random_byte_string(16)
+    key=CryptoTools.random_byte_string(16)
     ecb_cipher = OpenSSL::Cipher.new 'AES-128-ECB'
     ecb_cipher.encrypt
     ecb_cipher.key=key
     cbc_cipher = OpenSSL::Cipher.new 'AES-128-CBC'
     cbc_cipher.encrypt
     cbc_cipher.key=key
-    cbc_cipher.iv=random_byte_string(16)
-    padded_input=random_byte_string(5+rand(5))+input+random_byte_string(5+rand(5))
+    cbc_cipher.iv=CryptoTools.random_byte_string(16)
+    padded_input=CryptoTools.random_byte_string(5+rand(5))+input+CryptoTools.random_byte_string(5+rand(5))
     if rand(2)==0
       return cbc_cipher.update(padded_input)+cbc_cipher.final
     else
@@ -46,10 +43,10 @@ class BlockCrypto
     # variable_length determines if the string changes length on
     # repeated calls to the oracle
     # 1. Determine block size and secret length
-    secret_key=BlockCrypto.random_byte_string(16)
+    secret_key=CryptoTools.random_byte_string(16)
     prefix=''
     if variable_length==true
-      prefix=BlockCrypto.random_byte_string(Random.rand(16))
+      prefix=CryptoTools.random_byte_string(Random.rand(16))
     end
     init_len=BlockCrypto.AES_128_ECB(prefix+unknown_string,secret_key).length
     block_size=0

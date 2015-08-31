@@ -20,6 +20,9 @@ class CryptoTools
     Converters.str_to_hex(xor_str(Converters.hex_to_bytes(hex_a),
                                   Converters.hex_to_bytes(hex_b)))
   end
+  def self.random_byte_string(nbytes)
+    return nbytes.times.map{ Random.rand(256) }.pack("C*")
+  end
   def self.freq_hist(test_str)
     hist = Hash.new(0)
     sani_str=test_str.scan(/[A-Za-z ]/).join.downcase
@@ -98,14 +101,16 @@ class CryptoTools
   def self.undiffuse(y,c,b,dir=:left)
     # this is written for the 32 bit mersenne rng, inverts part of the
     # tempering function used in the mersenne twister
-    
-    #unfortunately we can't call diffuse directly since the
-    #MersenneTwisterRng has an internal state
-    mtrng=MersenneTwisterRng.new(1234)
-    ((32.0/c).floor).times do
-      y=mtrng.diffuse(y,c,b,dir)
+    # orig=0
+    if dir!=:left and dir!=:right
+      raise sprintf("Invalid direction: %s",dir.inspect)
     end
-    return y
+    mtrng=MersenneTwisterRng.new(1234)
+    r=y
+    ((32.0/c).ceil).times do 
+      r = y ^ (dir==:left ? r << c : r >> c)&b 
+    end
+    return r
   end
   def self.untemper(y)
     y = self.undiffuse(y,18,0xffffffff,:right)
@@ -189,5 +194,9 @@ class CryptoTools
       end
     }
     return ""
+  end
+  def self.check_password_token(token)
+    seed=Time.now.utc.to_i
+    
   end
 end

@@ -33,22 +33,23 @@ class CryptoToolsTest < MiniTest::Test
     output=CryptoTools.detect_aes_ecb(input)
     assert_equal input,output
   end
+  def test_random_byte_string
+    rand_string = CryptoTools.random_byte_string(17)
+    assert_equal 17,rand_string.length
+  end
   def test_undiffuse
-    y=(0xFFFFFFFF-1)
-    c=17
+    y=3848692825
+    c=7
     b=0x9d2c5680
     mtrng=MersenneTwisterRng.new(1234)
-    # diffused=mtrng.diffuse(y,c,b,:left)
-    # assert_equal y,CryptoTools.undiffuse(diffused,c,b)
-    diffused=mtrng.diffuse(y,c,b,:right)
-    assert_equal CryptoTools.undiffuse(diffused,c,b),y
+    assert_equal y,CryptoTools.undiffuse(mtrng.diffuse(y,c,b,:right),c,b,:right)
+    assert_equal y,CryptoTools.undiffuse(mtrng.diffuse(y,c,b,:left),c,b,:left)
   end
-  # def test_untemper
-  #   y=223154134
-  #   mtrng=MersenneTwisterRng.new(1234)
-  #   tempered=mtrng.temper(y)
-  #   assert_equal CryptoTools.untemper(y),y
-  # end
+  def test_untemper
+    y=223154134
+    mtrng=MersenneTwisterRng.new(1234)
+    assert_equal y,CryptoTools.untemper(mtrng.temper(y))
+  end
 end
 
 class ConvertersTest < MiniTest::Test
@@ -90,23 +91,24 @@ conversations?'"
       clear_text=BlockCrypto.aes_cbc_decrypt(cipher_text,key,iv)
       assert_equal clear_text,test_str
   end
-  def test_random_byte_string
-    rand_string = BlockCrypto.random_byte_string(17)
-    assert_equal 17,rand_string.length
-  end
 end
 class StreamCryptoTest < MiniTest::Test
-  def test_aes_ctr_encrypt_decrypt
-    nonce="\0"*8
-    key="YELLOW SUBMARINE"
-    test_str="Alice was beginning to get very tired of sitt
+  @@test_str="Alice was beginning to get very tired of sitt
 ing by her sister on the
 bank, and of having nothing to do: once or twice she had peeped into the
 book her sister was reading, but it had no pictures or conversations in
 it, 'and what is the use of a book,' thought Alice 'without pictures or
 conversations?'"
-    encrypted=StreamCrypto.aes_ctr_encrypt(test_str,nonce,key)
-    assert_equal StreamCrypto.aes_ctr_decrypt(encrypted,nonce,key),test_str
+  def test_aes_ctr_encrypt_decrypt
+    nonce="\0"*8
+    key="YELLOW SUBMARINE"
+    encrypted=StreamCrypto.aes_ctr_encrypt(@@test_str,nonce,key)
+    assert_equal StreamCrypto.aes_ctr_decrypt(encrypted,nonce,key),@@test_str
+  end
+  def test_mtrng_encrypt_decrypt
+    key=Random.rand(2**16)&0xFFFF
+    encrypted=StreamCrypto.mtrng_encrypt(@@test_str,key)
+    assert_equal StreamCrypto.mtrng_decrypt(encrypted,key),@@test_str
   end
 end 
 class MersenneTwisterTest < MiniTest::Test

@@ -201,7 +201,7 @@ def challenge19
 end
 def challenge20
   text = Curl.get("http://cryptopals.com/static/challenge-data/20.txt")
-  key = BlockCrypto.random_byte_string(16)
+  key = CryptoTools.random_byte_string(16)
   cipher_texts=[]
   texts=text.body_str.split(/\n/)
   minlen=texts.map{ |x| Base64.decode64(x).length }.min
@@ -239,15 +239,78 @@ def challenge21
   puts "Challenge 21 passed!"
 end
 def challenge22
-  
+  # major lolz here since we're using a Mersenne twister to simulate
+  # the passage of time in order to crack the seed of another Mersenne
+  # twister... Ahh its almost as good as gnu is not unix.
+
+  # seed with current time + random number of seconds
+  seed=Time.now.utc.to_i+Random.rand(40..1000)
+  mtrng=MersenneTwisterRng.new(seed)
+  # wait another random amount of time
+  recovered_seed=seed+Random.rand(40..1000)
+  num=mtrng.extract_number
+  tmp_num=MersenneTwisterRng.new(recovered_seed).extract_number
+  while num!=tmp_num
+    recovered_seed-=1
+    tmp_num=MersenneTwisterRng.new(recovered_seed).extract_number
+  end
+  if recovered_seed!=seed
+    raise "Challenge 22 failed!"
+  else
+    puts "Challenge 22 passed!"
+  end
 end
+def challenge23
+  mtrng=MersenneTwisterRng.new(1234)
+  # tap the rng 624 times, and untemper each one
+  state=[]
+  624.times do |i| 
+    state[i]=CryptoTools.untemper(mtrng.extract_number)
+  end
+  # make a new rng with the old state
+  cloned_rng=MersenneTwisterRng.new(state)
+  # tap each rng 5*624 and ensure the outputs are always equal
+  (5*624).times do 
+    a=cloned_rng.extract_number
+    b=mtrng.extract_number
+    if a!=b
+      raise "Challenge 23 failed!"
+    end
+  end
+  puts "Challenge 23 passed!"
+end
+def challenge24
+  # The challenge calls for 0..0xFFFF, but this takes a long time on
+  # my llaptop and the logic for 0XFF is the same, it just finishes
+  # 2^8 times faster 
+  secret_key=Random.rand(2**16)&0xFF
+  plaintext = CryptoTools.random_byte_string(Random.rand(20))+"A"*14
+  ciphertext = StreamCrypto.mtrng_encrypt(plaintext,secret_key)
+  test_text = "A"*ciphertext.length
+  key=0
+  0xFF.times do |k| 
+    ct=StreamCrypto.mtrng_encrypt(test_text,k)
+    if ct.slice(-14,14)==ciphertext.slice(-14,14)
+      key=k
+    end
+  end
+  if key!=secret_key
+    raise "Challenge 24 failed!"
+  else
+    puts "Challenge 24 passed!"
+    puts "Congratulations, Set 3 complete!"
+  end
+end
+
 def run_challenges
-  # challenge17
-  # challenge18
-  # challenge19
-  # challenge20
+  challenge17
+  challenge18
+  challenge19
+  challenge20
   challenge21
-  # challenge22
+  challenge22
+  challenge23
+  challenge24
 end
 
 run_challenges

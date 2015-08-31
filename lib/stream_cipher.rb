@@ -3,26 +3,32 @@ require 'openssl'
 require 'block_crypto'
 
 class MersenneTwisterRng
-  @@N = 624
-  @@M = 397
-  @@A = 0x9908b0df
-  @@idx = @@N
-  @@mt = [0]*@@N
+  def initialize(seed)
+    @N = 624
+    @M = 397
+    @A = 0x9908b0df
+    @idx = @N
+    @mt = [0]*@N
+    if seed.is_a?(Array) and seed.length == @N
+      @mt = seed
+    elsif seed.is_a?(Fixnum)
+      @mt[0] = seed
+      1.upto(@N) do |i| 
+        @mt[i] = self.int32(1812433253*(@mt[i-1]^(@mt[i-1]>>30))+i)
+      end
+    else
+      raise "Seed is wrong type: #{seed.class}"
+    end
+  end
   def int32(x)
     return (0xffffffff & x)
   end
-  def initialize(seed)
-    @@mt[0] = seed
-    1.upto(@@N) do |i| 
-      @@mt[i] = self.int32(1812433253*(@@mt[i-1]^(@@mt[i-1]>>30))+i)
-    end
-  end
   def extract_number
-    if @@idx >= @@N
+    if @idx >= @N
       twist
     end
-    result = temper(@@mt[@@idx])
-    @@idx+=1
+    result = temper(@mt[@idx])
+    @idx+=1
     return result
   end
   def diffuse(y,c,b,dir=:left)
@@ -38,15 +44,15 @@ class MersenneTwisterRng
     return self.diffuse(y,18,0xffffffff,:right)
   end
   def twist
-    @@N.times do |i| 
-      y = self.int32((@@mt[i] & 0x80000000) +
-                (@@mt[(i+1)%@@N] & 0x7fffffff))
-      @@mt[i] = @@mt[(i+@@M)%@@N] ^ y >> 1
+    @N.times do |i| 
+      y = self.int32((@mt[i] & 0x80000000) +
+                (@mt[(i+1)%@N] & 0x7fffffff))
+      @mt[i] = @mt[(i+@M)%@N] ^ y >> 1
       if y%2 != 0
-        @@mt[i]^=@@A
+        @mt[i]^=@A
       end
     end
-    @@idx=0
+    @idx=0
   end
 end
 
@@ -67,5 +73,20 @@ class StreamCrypto
   end
   def self.aes_ctr_decrypt(cipher_text,nonce,key)
     aes_ctr_encrypt(cipher_text,nonce,key)
+  end
+  def self.mtrng_encrypt(clear_text,key)
+    if key > 0xFFFF
+      raise "Key must be less than 16 bits"
+    end
+    mtrng=MersenneTwisterRng.new(key)
+    # build the keystream
+    keystream=[]
+    clear_text.length.times do 
+      keystream+=[mtrng.extract_number%256]
+    end
+    return CryptoTools.xor_str(keystream.pack("C*"),clear_text)
+  end
+  def self.mtrng_decrypt(cipher_text,key)
+    mtrng_encrypt(cipher_text,key)
   end
 end
