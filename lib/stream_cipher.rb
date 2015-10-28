@@ -57,18 +57,22 @@ class MersenneTwisterRng
 end
 
 class StreamCrypto
-  def self.aes_ctr_encrypt(clear_text,nonce,key)
+  def self.aes_ctr_keystream(length,nonce,key)
     counter=nonce.unpack('q')[0]
-    keystream = ""
     cipher = OpenSSL::Cipher.new 'AES-128-ECB'
     cipher.padding=0
     cipher.encrypt
     cipher.key=key
-    (Float(clear_text.length)/key.length).ceil().times do |i| 
+    keystream = ""
+    (Float(length)/key.length).ceil().times do |i| 
       stream_nonce="\0"*8+[counter].pack('q')
       keystream += cipher.update(stream_nonce)
       counter+=1
     end
+    return keystream
+  end
+  def self.aes_ctr_encrypt(clear_text,nonce,key)
+    keystream=aes_ctr_keystream(clear_text.length,nonce,key)
     return CryptoTools.xor_str(keystream.slice(0,clear_text.length),clear_text)
   end
   def self.aes_ctr_decrypt(cipher_text,nonce,key)

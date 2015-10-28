@@ -195,8 +195,20 @@ class CryptoTools
     }
     return ""
   end
+  def self.issue_reset_token
+    mtrng=MersenneTwisterRng.new(Time.now.utc.to_i)
+    return 256.times.map{mtrng.extract_number%256}.pack("C*")
+  end
   def self.check_password_token(token)
     seed=Time.now.utc.to_i
-    
+    # try upto 5 minutes previous to see if this token came from a mersenne twister rng
+    (5*60).times do |dt| 
+      mtrng=MersenneTwisterRng.new(seed+dt)
+      test_token=token.length.times.map{ mtrng.extract_number%256 }.pack("C*")
+      if test_token == token
+        return seed+dt
+      end
+    end
+    return nil
   end
 end

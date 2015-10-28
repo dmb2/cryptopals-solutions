@@ -1,0 +1,97 @@
+#!/usr/bin/env ruby 
+require 'curb'
+require 'crypto_tools'
+require 'block_crypto'
+require 'stream_cipher'
+require 'openssl'
+require 'servers'
+require 'base64'
+def get_clear_text
+  aes_http = Curl.get("http://cryptopals.com/static/challenge-data/25.txt")
+  cipher_txt=Base64.decode64(aes_http.body_str)
+  aes_key="YELLOW SUBMARINE"
+  cipher = OpenSSL::Cipher.new 'AES-128-ECB'
+  cipher.decrypt
+  cipher.key=aes_key
+  return cipher.update(cipher_txt) + cipher.final
+end
+
+def challenge25
+  key=CryptoTools.random_byte_string(16)
+  # we can use get_clear_text to follow the challenge exactly, but
+  # this is shorter and runs faster
+  clear_text="Alice was beginning to get very tired of sitting by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversation?'"
+  server = CTROracleServer.new
+  cipher_text=server.encrypt(clear_text)
+  tmp_cipher_text=server.encrypt(clear_text)
+  # now, we exploit the weakness of being able to edit the cipher
+  # text.  If we edit the plaintext to be the same byte as the
+  # keystream, then it will show up as a nullbyte in the new
+  # ciphertext.  This gives us one byte of the keystream.  From there
+  # its matter of repeating until we recover the whole keystream and
+  # then we can XOR the recovered keystream with the ciphertext and
+  # get the original plaintext
+  keystream=[]
+  cipher_text.length.times do |i| 
+    256.times do |byte| 
+      if server.edit(tmp_cipher_text,i,byte.chr)[i] == "\0"
+        keystream+=[byte]
+      end
+    end
+  end
+  recovered_text = CryptoTools.xor_str(keystream.pack("C*"),cipher_text)
+  if recovered_text != clear_text
+    raise "Challenge 25 failed!"
+  else
+    puts "Challenge 25 passed!"
+  end
+end
+def challenge26
+  server = CTRServer.new
+  user_data=":admin<true"
+  cookie=server.issue_cookie(user_data)
+  cipher_text = Converters.hex_to_bytes(cookie);
+  cipher_text[32]=[cipher_text[32].bytes[0]^0x01].pack("C*")
+  cipher_text[38]=[cipher_text[38].bytes[0]^0x01].pack("C*")
+  new_cookie=Converters.str_to_hex(cipher_text);
+  if server.admin?(new_cookie)==true
+    puts "Challenge 26 passed! Admin Access granted!"
+  else
+    raise "Challenge 26 failed!"
+  end
+end
+def challenge27
+  server = CBCIVServer.new
+  cookie = server.issue_cookie("A"*16)
+  raw = Converters.hex_to_bytes(cookie)
+  blocks=raw.blocks(16)
+  new_cookie = Converters.str_to_hex([blocks[0],"\0"*16,blocks[0],blocks.slice(3,blocks.length)].join)
+  begin 
+    server.decode_cookie(new_cookie)
+  rescue Exception => e
+    exception_str=e.message
+    dirty_str=exception_str.slice(25,exception_str.length)
+    p1=dirty_str.blocks(16)[0]
+    p3=dirty_str.blocks(16)[2]
+    key=CryptoTools.xor_str(p1,p3)
+    if key!=server.key
+      raise "Challenge 27 failed!"
+    else
+      puts "Challenge 27 passed!"
+    end
+  end
+  
+  # puts cookie.inspect
+  
+end
+def run_challenges
+  # challenge25
+  # challenge26
+  challenge27
+end
+
+run_challenges

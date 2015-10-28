@@ -1,7 +1,27 @@
 require 'crypto_tools'
 require 'block_crypto'
+require 'stream_cipher'
 require 'openssl'
 require 'base64'
+class CTROracleServer
+  @@ctr_key = CryptoTools.random_byte_string(16)
+  @@nonce="\0"*8
+  def encrypt(plain_text)
+    return StreamCrypto.aes_ctr_encrypt(plain_text,@@nonce,@@ctr_key)
+  end
+  def edit(cipher_text,offset,newtext)
+    keystream = StreamCrypto.aes_ctr_keystream(cipher_text.length,@@nonce,@@ctr_key)
+    # we can do this two ways:
+    # 1. decrypt cipher_text, splice in newtext and re-encrypt
+    # 2. encrypt newtext with the keystream for that portion of the
+    #    cipher text and splice the resulting cipher text into the old
+    #    encrypted text
+    # This implements 2.
+    new_cipher_text=CryptoTools.xor_str(keystream.slice(offset,newtext.length),newtext)
+    cipher_text.slice!(offset,newtext.length)
+    return cipher_text.insert(offset,new_cipher_text)
+  end
+end
 
 class CBCPaddingServer
   @@sessions=["MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=",
@@ -30,19 +50,17 @@ class CBCPaddingServer
     return true
   end
 end
-class CBCServer
+
+class Server
   @@aes_key = CryptoTools.random_byte_string(16)
   def issue_cookie(userdata)
     raw_cookie_str="comment1=cooking%20MCs;userdata="
     raw_cookie_str+=sanitize(userdata)
     raw_cookie_str+=";comment2=%20like%20a%20pound%20of%20bacon"
-    return Converters.str_to_hex(BlockCrypto.aes_cbc_encrypt(raw_cookie_str,
-                                                             @@aes_key,
-                                                             "\x0"*16))
+    return Converters.str_to_hex(raw_cookie_str)
   end
   def decode_cookie(cookie)
-    return BlockCrypto.aes_cbc_decrypt(Converters.hex_to_bytes(cookie),
-                                       @@aes_key, "\x0"*16)
+    return Converters.hex_to_bytes(cookie)
   end
   def parse_cookie(cookie)
     session = Hash.new("")
@@ -63,6 +81,66 @@ class CBCServer
   end
 end
 
+class CBCServer < Server
+  def issue_cookie(userdata)
+    raw_cookie_str="comment1=cooking%20MCs;userdata="
+    raw_cookie_str+=sanitize(userdata)
+    raw_cookie_str+=";comment2=%20like%20a%20pound%20of%20bacon"
+    return Converters.str_to_hex(BlockCrypto.aes_cbc_encrypt(raw_cookie_str,
+                                                             @@aes_key,
+                                                             "\x0"*16))
+  end
+  def decode_cookie(cookie)
+    return BlockCrypto.aes_cbc_decrypt(Converters.hex_to_bytes(cookie),
+                                       @@aes_key, "\x0"*16)
+  end
+end
+class CBCIVServer < Server
+  def issue_cookie(userdata)
+    raw_cookie_str="comment1=cooking%20MCs;userdata="
+    raw_cookie_str+=sanitize(userdata)
+    raw_cookie_str+=";comment2=%20like%20a%20pound%20of%20bacon"
+    return Converters.str_to_hex(BlockCrypto.aes_cbc_encrypt(raw_cookie_str,
+                                                             @@aes_key,
+                                                             @@aes_key))
+  end
+  def key()
+    return @@aes_key
+  end
+  def valid_ascii(string)
+    bytes = string.bytes()
+    bytes.each do |byte| 
+      if byte < 32 or byte > 126
+        return false
+      end
+    end
+    return true
+  end
+  def decode_cookie(cookie)
+    clear_cookie=BlockCrypto.aes_cbc_decrypt(Converters.hex_to_bytes(cookie),
+                                             @@aes_key, @@aes_key)
+    if not valid_ascii(clear_cookie)
+      raise "Error Decrypting Cookie: #{clear_cookie}"
+    end
+    return clear_cookie
+  end
+end
+
+class CTRServer < Server
+  @@nonce = "\0"*8
+  def issue_cookie(userdata)
+    raw_cookie_str="comment1=cooking%20MCs;userdata="
+    raw_cookie_str+=sanitize(userdata)
+    raw_cookie_str+=";comment2=%20like%20a%20pound%20of%20bacon"
+    return Converters.str_to_hex(StreamCrypto.aes_ctr_encrypt(raw_cookie_str,
+                                                             @@nonce,
+                                                             @@aes_key))
+  end
+  def decode_cookie(cookie)
+    return StreamCrypto.aes_ctr_decrypt(Converters.hex_to_bytes(cookie),
+                                       @@nonce , @@aes_key)
+  end
+end
 class ECBServer
   @@aes_key = CryptoTools.random_byte_string(16)
   def parse_cookie(cookie_str)

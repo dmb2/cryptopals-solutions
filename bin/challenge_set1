@@ -62,7 +62,7 @@ def challenge6
     raise 'Challenge 6 failed!'
   else
     puts "Challenge 6 passed!"
-    puts CryptoTools.xor_key(cipher_byte_str,key)
+    # puts CryptoTools.xor_key(cipher_byte_str,key)
   end
 end
 
