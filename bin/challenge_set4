@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby 
+require 'digest/sha1'
 require 'curb'
 require 'crypto_tools'
 require 'block_crypto'
@@ -6,6 +7,8 @@ require 'stream_cipher'
 require 'openssl'
 require 'servers'
 require 'base64'
+require 'hash_functions'
+
 def get_clear_text
   aes_http = Curl.get("http://cryptopals.com/static/challenge-data/25.txt")
   cipher_txt=Base64.decode64(aes_http.body_str)
@@ -88,10 +91,37 @@ def challenge27
   # puts cookie.inspect
   
 end
+def challenge28
+  message="hello world"
+  if Converters.str_to_hex(Hash.sha1(message)) != Digest::SHA1.hexdigest(message)
+    puts Converters.str_to_hex(Hash.sha1(message))
+    puts Digest::SHA1.hexdigest(message)
+    raise "Challenge 28 failed, hash doesn't match Ruby's native version!"
+  end
+  server = MACServer.new
+  mac = server.sign_message(message)
+  if not server.verify_message(message,mac)
+    raise "Challenge 28 failed, same message cannot be verified!"
+  end
+  if server.verify_message("Hello world",mac)
+    raise "Challenge 28 failed, edited message verified!"
+  end
+  forged_mac = Hash.sha1(message)
+  if server.verify_message(message,forged_mac)
+    raise "Challenge 28 failed, forged mac verified!"
+  end
+  puts "Challenge 28 passed!"
+end
+def challenge29
+  
+end
 def run_challenges
   # challenge25
   # challenge26
-  challenge27
+  # challenge27
+  challenge28
+  challenge29
 end
+
 
 run_challenges

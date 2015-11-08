@@ -1,23 +1,85 @@
 require 'string_utils'
-def sha1(message)
-  h=[0x67452301,
-     0xEFCDAB89,
-     0x98BADCFE,
-     0x10325476,
-     0xC3D2E1F0]
-  char_size=message.bytes[0].bit_length
-  ml = char_size*message.length
-  # preprocessing
-  if ml%8==0
-    message=(message.bytes+[0x80]).pack("C*")
+class Hash
+  # https://en.wikipedia.org/wiki/Circular_shift
+  def self.rotl32(value,count)
+    return ((value << count) | (value >> 32-count))&0xFFFFFFFF
   end
-  # pad the message to a multiple of 512 bits
-  bytelen=512/char_size
-  bytes=message.bytes
-  pad_length = bytelen - (bytes.length%bytelen)
-  padded_message = (bytes +[0]*pad_length).pack("C*")
-  padded_message.blocks(bytelen).each do |chunk| 
-    chunk.blocks(32)
+  def self.rotr32(value,count)
+    return ((value >> count) | (value << 32-count))&0xFFFFFFFF
+  end
+  def self.MDpad(message)
+    bit_len = message.size << 3
+    message << "\x80".force_encoding('ascii-8bit')
+    while (message.size % 64) != 56
+      message << "\0"
+    end
+    message = message.force_encoding("ascii-8bit") + [bit_len >> 32, bit_len & 0xFFFFFFFF].pack("N2")
+    if (message.size % 64)!=0
+      raise "Padding failed"
+    end
+    return message
+  end
+  def self.compress_chunk(chunk,a,b,c,d,e)
+    words=[]
+    chunk.blocks(4).each do |word| 
+      words+=word.unpack("N*")
+    end
+    words+=[0]*(79-words.length)
+    16.upto(79) do |i| 
+      words[i] = rotl32((words[i-3]^words[i-8]^words[i-14]^words[i-16]),1)
+    end
+    f = 0
+    k = 0
+    80.times do |i| 
+      if i < 20
+        f = ((b & c) | (~b & d))
+        k = 0x5A827999
+      elsif i >= 20 and i < 40
+        f = (b^c^d)
+        k = 0x6ED9EBA1
+      elsif i >= 40 and i < 60
+        f = (b&c)|(b&d)|(c&d)
+        k = 0x8F1BBCDC
+      else 
+        f = b ^ c ^ d
+        k = 0xCA62C1D6
+      end
+      tmp = rotl32(a,5)+f + e + k + words[i]&0xFFFFFFFF
+      e = d
+      d = c
+      c = rotl32(b,30)
+      b = a 
+      a = tmp
+    end
+    return [a,b,c,d,e]
+  end
+  def self.sha1(message)
+    # very inefficient, but we won't be using this in any serious application
+    internal_message = message.clone
+    self.MDpad(internal_message)
+    h=[0x67452301,
+       0xEFCDAB89,
+       0x98BADCFE,
+       0x10325476,
+       0xC3D2E1F0]
+    internal_message.blocks(64).each do |chunk| 
+      a = h[0]
+      b = h[1]
+      c = h[2]
+      d = h[3]
+      e = h[4]
+      a,b,c,d,e=self.compress_chunk(chunk,a,b,c,d,e)
+      h[0]+=a&0xFFFFFFFF
+      h[1]+=b&0xFFFFFFFF
+      h[2]+=c&0xFFFFFFFF
+      h[3]+=d&0xFFFFFFFF
+      h[4]+=e&0xFFFFFFFF
+    end
+    result=""
+    h.each do |num| 
+      result+=[num].pack("N*")
+    end
+    return result
   end
   
 end

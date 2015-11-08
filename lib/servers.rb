@@ -3,6 +3,17 @@ require 'block_crypto'
 require 'stream_cipher'
 require 'openssl'
 require 'base64'
+require 'hash_functions'
+class MACServer 
+  @@key = CryptoTools.random_byte_string(16)
+  def sign_message(message)
+    Hash.sha1((@@key+message).force_encoding("ascii-8bit"))
+  end
+  def verify_message(message,mac)
+    return Hash.sha1((@@key+message).force_encoding("ascii-8bit"))==mac
+  end
+end
+
 class CTROracleServer
   @@ctr_key = CryptoTools.random_byte_string(16)
   @@nonce="\0"*8
