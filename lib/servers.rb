@@ -5,7 +5,7 @@ require 'openssl'
 require 'base64'
 require 'hash_functions'
 class MACServer 
-  @@key = CryptoTools.random_byte_string(16)
+  @@key = "Yellow Submarine"
   def sign_message(message)
     Hash.sha1((@@key+message).force_encoding("ascii-8bit"))
   end

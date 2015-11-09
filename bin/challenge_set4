@@ -92,7 +92,7 @@ def challenge27
   
 end
 def challenge28
-  message="hello world"
+  message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
   if Converters.str_to_hex(Hash.sha1(message)) != Digest::SHA1.hexdigest(message)
     puts Converters.str_to_hex(Hash.sha1(message))
     puts Digest::SHA1.hexdigest(message)
@@ -114,18 +114,21 @@ def challenge28
 end
 def challenge29
   message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
+  pad_len = 64*((message.length+16)/64.0).ceil
+  puts pad_len
+  forged_suffix=Hash.MDpad("A"*pad_len+";admin=true")
+  puts forged_suffix.slice(-4,4).unpack("N*")
+  forged_suffix.slice!(0,pad_len)
+  # puts forged_suffix[-2].inspect
   server = MACServer.new
   mac = server.sign_message(message)
-  h = mac.blocks(4)
-  a,b,c,d,e=h.map{ |x| x.unpack("N*")[0] }
-  padded_message = Hash.MDpad(message)
-  forged_suffix = ";admin=true"
-  forged_message = message+forged_suffix
-  new_mac = Hash.fixed_sha1(forged_suffix,a,b,c,d,e)
-  puts Converters.str_to_hex(new_mac)
+  forged_mac = Hash.fixed_sha1(forged_suffix,mac.unpack("N5"))
+
+  padded_message = Hash.MDpad("A"*16+message)
+  forged_message = padded_message.slice(16,padded_message.length)+";admin=true"
+  puts Converters.str_to_hex(forged_mac)
   puts Converters.str_to_hex(server.sign_message(forged_message))
-  puts Converters.str_to_hex(server.sign_message(forged_suffix))
-  if server.verify_message(forged_message,new_mac)
+  if server.verify_message(forged_message,forged_mac)
     puts "Challenge 29 passed!"
   else
     raise "Challenge 29 failed!"
@@ -135,7 +138,7 @@ def run_challenges
   # challenge25
   # challenge26
   # challenge27
-  challenge28
+  # challenge28
   challenge29
 end
 
