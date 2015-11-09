@@ -113,7 +113,23 @@ def challenge28
   puts "Challenge 28 passed!"
 end
 def challenge29
-  
+  message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
+  server = MACServer.new
+  mac = server.sign_message(message)
+  h = mac.blocks(4)
+  a,b,c,d,e=h.map{ |x| x.unpack("N*")[0] }
+  padded_message = Hash.MDpad(message)
+  forged_suffix = ";admin=true"
+  forged_message = message+forged_suffix
+  new_mac = Hash.fixed_sha1(forged_suffix,a,b,c,d,e)
+  puts Converters.str_to_hex(new_mac)
+  puts Converters.str_to_hex(server.sign_message(forged_message))
+  puts Converters.str_to_hex(server.sign_message(forged_suffix))
+  if server.verify_message(forged_message,new_mac)
+    puts "Challenge 29 passed!"
+  else
+    raise "Challenge 29 failed!"
+  end
 end
 def run_challenges
   # challenge25
