@@ -113,33 +113,65 @@ def challenge28
   puts "Challenge 28 passed!"
 end
 def challenge29
-  message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
-  pad_len = 64*((message.length+16)/64.0).ceil
-  puts pad_len
-  forged_suffix=Hash.MDpad("A"*pad_len+";admin=true")
-  puts forged_suffix.slice(-4,4).unpack("N*")
-  forged_suffix.slice!(0,pad_len)
-  # puts forged_suffix[-2].inspect
   server = MACServer.new
+  message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
   mac = server.sign_message(message)
-  forged_mac = Hash.fixed_sha1(forged_suffix,mac.unpack("N5"))
-
-  padded_message = Hash.MDpad("A"*16+message)
-  forged_message = padded_message.slice(16,padded_message.length)+";admin=true"
-  puts Converters.str_to_hex(forged_mac)
-  puts Converters.str_to_hex(server.sign_message(forged_message))
-  if server.verify_message(forged_message,forged_mac)
+  passed=false
+  25.times do |secret_len| 
+    pad_len = 64*((message.length+secret_len)/64.0).ceil
+    forged_suffix=Hash.MDpad("A"*pad_len+";admin=true")
+    forged_suffix.slice!(0,pad_len)
+    forged_mac = Hash.fixed_sha1(forged_suffix,mac.unpack("N5"))
+    padded_message = Hash.MDpad("A"*secret_len+message)
+    forged_message = padded_message.slice(secret_len,padded_message.length)+";admin=true"
+    if server.verify_message(forged_message,forged_mac)
+      passed=true
+      break
+    end
+  end
+  if passed
     puts "Challenge 29 passed!"
   else
     raise "Challenge 29 failed!"
   end
+end
+def challenge30
+  message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
+  if Converters.str_to_hex(Hash.md4(message)) != OpenSSL::Digest::MD4.hexdigest(message)
+    puts Converters.str_to_hex(Hash.md4(message))
+    puts OpenSSL::Digest::MD4.hexdigest(message)
+    raise "Challenge 30 failed, hash doesn't match Ruby's native version!"
+  end
+  server = MD4MACServer.new
+  mac = server.sign_message(message)
+  passed = false 
+  25.times do |secret_len| 
+    pad_len = 64*((message.length+secret_len)/64.0).ceil
+    forged_suffix=Hash.MDpad("A"*pad_len+";admin=true",:little)
+    forged_suffix.slice!(0,pad_len)
+    forged_mac = Hash.fixed_md4(forged_suffix,mac.unpack("V5"))
+    padded_message = Hash.MDpad("A"*secret_len+message,:little)
+    forged_message = padded_message.slice(secret_len,padded_message.length)+";admin=true"
+    if server.verify_message(forged_message,forged_mac)
+      passed=true
+      break
+    end
+  end
+  if passed
+    puts "Challenge 30 passed!"
+  else
+    raise "Challenge 30 failed!"
+  end
+  
 end
 def run_challenges
   # challenge25
   # challenge26
   # challenge27
   # challenge28
-  challenge29
+  # challenge29
+  # challenge30
+  
 end
 
 

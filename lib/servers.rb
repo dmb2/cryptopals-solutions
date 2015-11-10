@@ -5,14 +5,25 @@ require 'openssl'
 require 'base64'
 require 'hash_functions'
 class MACServer 
-  @@key = "Yellow Submarine"
+  @@key = File.readlines("/usr/share/dict/words").sample.strip
   def sign_message(message)
+    # puts "key: #{@@key}, #{@@key.length}"
     Hash.sha1((@@key+message).force_encoding("ascii-8bit"))
   end
   def verify_message(message,mac)
     return Hash.sha1((@@key+message).force_encoding("ascii-8bit"))==mac
   end
 end
+class MD4MACServer 
+  @@key = File.readlines("/usr/share/dict/words").sample.strip
+  def sign_message(message)
+    Hash.md4((@@key+message).force_encoding("ascii-8bit"))
+  end
+  def verify_message(message,mac)
+    return Hash.md4((@@key+message).force_encoding("ascii-8bit"))==mac
+  end
+end
+
 
 class CTROracleServer
   @@ctr_key = CryptoTools.random_byte_string(16)
