@@ -165,12 +165,12 @@ def challenge30
   
 end
 def run_challenges
-  # challenge25
-  # challenge26
-  # challenge27
-  # challenge28
-  # challenge29
-  # challenge30
+  challenge25
+  challenge26
+  challenge27
+  challenge28
+  challenge29
+  challenge30
   
 end
 
