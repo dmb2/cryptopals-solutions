@@ -15,7 +15,7 @@ def str_cmp(a,b)
     if char != b[i].bytes[0]
       return false
     end
-    sleep(0.050)
+    sleep(0.005)
   end
   return true
 end

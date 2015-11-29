@@ -8,6 +8,7 @@ require 'openssl'
 require 'servers'
 require 'base64'
 require 'hash_functions'
+require 'net/http'
 
 def get_clear_text
   aes_http = Curl.get("http://cryptopals.com/static/challenge-data/25.txt")
@@ -138,8 +139,8 @@ end
 def challenge30
   message="comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
   if Converters.str_to_hex(Hash.md4(message)) != OpenSSL::Digest::MD4.hexdigest(message)
-    puts Converters.str_to_hex(Hash.md4(message))
-    puts OpenSSL::Digest::MD4.hexdigest(message)
+    # puts Converters.str_to_hex(Hash.md4(message))
+    # puts OpenSSL::Digest::MD4.hexdigest(message)
     raise "Challenge 30 failed, hash doesn't match Ruby's native version!"
   end
   server = MD4MACServer.new
@@ -162,16 +163,80 @@ def challenge30
   else
     raise "Challenge 30 failed!"
   end
-  
+end
+def scan_byte(uri,sig,i)
+  times=[]
+  sample_times=20
+  last_mu=0
+  last_s2=0
+  puts i
+  0.upto(0xff) do |tb| 
+    sig[i]=tb
+    test_hmac=Converters.str_to_hex(sig.pack("C*"))
+    # puts test_hmac
+    uri.query = URI.encode_www_form({:file => 'test.txt',
+                                     :signature => test_hmac})
+    mu=0
+    samps=[]
+    sample_times.times do 
+      t1=Time.now
+      res = Net::HTTP.get_response(uri)
+      t2=Time.now
+      samps+=[(t2-t1)*1000]
+      mu+=samps.last
+    end
+    mu/=samps.length
+    s2=0
+    samps.each do |s| 
+      s2+=(s-mu)**2
+    end
+    s2/=samps.length
+    t=(mu-last_mu)/(Math.sqrt((s2+last_s2)/samps.length))
+    # puts "#{test_hmac}: t=#{t}"
+    times[tb]=t
+    last_s2=s2
+    last_mu=mu
+  end
+  return times
+end
+def challenge31
+  uri= URI("http://localhost:4567/test")
+  valid_sig='864734d92c15f7f907d9f31c37bf86d287595a4e'
+  params = { :file => 'test.txt',
+             :signature => valid_sig }
+  uri.query = URI.encode_www_form(params)
+  begin 
+    res = Net::HTTP.get_response(uri)
+  rescue Errno::ECONNREFUSED 
+    puts "You have to start the hmac server for this challenge!"
+  rescue => ex
+    puts "#{ex.class}: #{ex.message}"
+  end
+  sig = [0]*20
+  # times=scan_byte(uri,sig,0)
+  sig.length.times do |i| 
+    times=scan_byte(uri,sig,i)
+    sig[i]=times.index(times.max)
+    puts sig.pack("C*").unpack("H*")[0]
+  end
+  if sig!=valid_sig
+    raise "Challenge 31 failed!" 
+  else
+    puts "Challenge 31 passed!"
+  end
+end
+def challenge32
 end
 def run_challenges
-  challenge25
-  challenge26
-  challenge27
-  challenge28
-  challenge29
-  challenge30
-  
+  # challenge25
+  # challenge26
+  # challenge27
+  # challenge28
+  # challenge29
+  # challenge30
+  challenge31
+  # challenge32
+  # puts "Challenge set 4 complete!"
 end
 
 
