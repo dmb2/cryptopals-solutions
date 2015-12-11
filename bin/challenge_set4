@@ -166,10 +166,7 @@ def challenge30
 end
 def scan_byte(uri,sig,i)
   times=[]
-  sample_times=20
-  last_mu=0
-  last_s2=0
-  puts i
+  sample_times=100
   0.upto(0xff) do |tb| 
     sig[i]=tb
     test_hmac=Converters.str_to_hex(sig.pack("C*"))
@@ -186,16 +183,13 @@ def scan_byte(uri,sig,i)
       mu+=samps.last
     end
     mu/=samps.length
-    s2=0
-    samps.each do |s| 
-      s2+=(s-mu)**2
-    end
-    s2/=samps.length
-    t=(mu-last_mu)/(Math.sqrt((s2+last_s2)/samps.length))
+    # s2=0
+    # samps.each do |s| 
+    #   s2+=(s-mu)**2
+    # end
+    # s2/=samps.length
+    times[tb]=mu
     # puts "#{test_hmac}: t=#{t}"
-    times[tb]=t
-    last_s2=s2
-    last_mu=mu
   end
   return times
 end
@@ -212,29 +206,40 @@ def challenge31
   rescue => ex
     puts "#{ex.class}: #{ex.message}"
   end
-  sig = [0]*20
+  sig = [134, 71, 52, 217, 44, 21, 247, 249, 7, 217, 243, 28, 55]
+  sig+=[0]*7
   # times=scan_byte(uri,sig,0)
   sig.length.times do |i| 
+    if i < 13
+      next
+    end
     times=scan_byte(uri,sig,i)
     sig[i]=times.index(times.max)
-    puts sig.pack("C*").unpack("H*")[0]
+    if sig.pack("C*").unpack("H*")[0].slice(0,2*i)!=valid_sig.slice(0,2*i)
+      puts sig.pack("C*").unpack("H*")[0]
+      puts valid_sig
+      raise "Challenge 31 failed!" 
+    else
+      puts sig.pack("C*").unpack("H*")[0]
+    end
   end
-  if sig!=valid_sig
+  if sig.pack("C*")!=valid_sig
     raise "Challenge 31 failed!" 
   else
     puts "Challenge 31 passed!"
   end
 end
 def challenge32
+  puts "Challenge 31 and 32 use the same server code"
 end
 def run_challenges
-  # challenge25
-  # challenge26
-  # challenge27
-  # challenge28
-  # challenge29
-  # challenge30
-  challenge31
+  challenge25
+  challenge26
+  challenge27
+  challenge28
+  challenge29
+  challenge30
+  # challenge31
   # challenge32
   # puts "Challenge set 4 complete!"
 end
