@@ -3,6 +3,7 @@ require 'converters'
 require 'block_crypto'
 require 'stream_cipher'
 require 'string_utils'
+require 'securerandom'
 
 class CryptoTools 
   def self.xor_str(str_a,str_b)
@@ -21,7 +22,7 @@ class CryptoTools
                                   Converters.hex_to_bytes(hex_b)))
   end
   def self.random_byte_string(nbytes)
-    return nbytes.times.map{ Random.rand(256) }.pack("C*")
+    return SecureRandom.random_bytes(nbytes)
   end
   def self.freq_hist(test_str)
     hist = Hash.new(0)
