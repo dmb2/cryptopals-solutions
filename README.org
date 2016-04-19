@@ -5,6 +5,9 @@ These are my solutions to the cryptography challenges on
 I've written a write up relating to challenge 23: [[https://dbjergaard.github.io/posts/untempering_mersenne_twister.html][Untempering the
 Mersenne Twister RNG]]
 
+You can also find high level overviews of the different sets here:
+https://dbjergaard.github.io/
+
 I hope to write up solutions to the other challenges that were fun or
 difficult, but I haven't had time just yet.  
 

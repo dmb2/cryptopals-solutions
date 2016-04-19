@@ -6,9 +6,10 @@ Gem::Specification.new do |s|
   s.executables << 'challenge_set3'
   s.executables << 'challenge_set4'
   s.executables << 'challenge_set5'
+  s.executables << 'diffie_hellman_server'
   s.date = '2015-05-06'
-  s.summary = 'Cryptography and pen testing tools'
-  s.description = 'Tools for completing matasano\'s crypto challenges'
+  s.summary = 'Solutions to Matasano Cryptography challenges'
+  s.description = 'Tools for completing Matasano\'s crypto challenges'
   s.authors = ["David Bjergaard"]
   s.email = 'dbjergaard@gmail.com'
   s.files = ["lib/converters.rb",
@@ -17,7 +18,8 @@ Gem::Specification.new do |s|
              "lib/hash_functions.rb",
              "lib/stream_cipher.rb",
              "lib/block_crypto.rb",
-             "lib/crypto_tools.rb"]
+             "lib/crypto_tools.rb",
+             "lib/pubkey.rb"]
   s.homepage = 'https://dbjergaard.github.io/'
   s.license = 'MIT'
 end

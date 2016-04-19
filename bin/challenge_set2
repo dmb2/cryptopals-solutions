@@ -15,7 +15,7 @@ end
 def challenge10
   cipher_http = Curl.get("http://cryptopals.com/static/challenge-data/10.txt")
   key="YELLOW SUBMARINE"
-  iv=Converters.hex_to_bytes("00000000000000000000000000000000")
+  iv="\0"*16#Converters.hex_to_bytes("00000000000000000000000000000000")
   clear_text=BlockCrypto.aes_cbc_decrypt(Base64.decode64(cipher_http.body_str),key,iv)
   if clear_text.split(/\n/)[-1] != "Play that funky music "
     raise "Challenge 10 failed!"
@@ -104,8 +104,8 @@ def challenge16
   user_data="A"*16+":admin<true"
   cookie=server.issue_cookie(user_data)
   cipher_text = Converters.hex_to_bytes(cookie);
-  cipher_text[32]=[cipher_text[32].bytes[0]^0x01].pack("C*")
-  cipher_text[38]=[cipher_text[38].bytes[0]^0x01].pack("C*")
+  cipher_text[32]=[cipher_text.bytes[32]^0x01].pack("C*")
+  cipher_text[38]=[cipher_text.bytes[38]^0x01].pack("C*")
   new_cookie=Converters.str_to_hex(cipher_text);
   if server.admin?(new_cookie)==true
     puts "Challenge 16 passed! Admin Access granted!"
