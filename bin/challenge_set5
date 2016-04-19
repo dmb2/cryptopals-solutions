@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby 
+require 'socket'
+require 'block_crypto'
+require 'string_utils'
+require 'pubkey'
+require 'converters'
+require 'securerandom'
+def challenge33
+  # This is a prelude to 34, so we're not going to wrap everything in
+  # a nice api just yet, for now just the quick and dirty to make sure
+  # that we can do the Diffie-Hellman math. In 34 we'll put it all in
+  # a server and get the client to talk to the server with a key
+  # exchange
+  
+  #Alice
+  p=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
+  g=2
+  alice = DiffieHellman.new(p,g)
+  bob = DiffieHellman.new(p,g)
+  bob_s=bob.session(alice.pub_key)
+  alice_s=alice.session(bob.pub_key)
+
+  if alice_s != bob_s
+    raise "Challenge 33 failed!" 
+  else
+    puts "Challenge 33 passed!"
+  end
+end
+def challenge34
+  message="Alice was beginning to get very tired of sitting by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversation?'".split("\n")
+  begin 
+    server = TCPSocket.new 'localhost', 9090
+    p=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
+    g=2
+    alice = DiffieHellman.new(p,g);
+    server.puts p.to_s(16)
+    server.puts g.to_s(16)
+    server.puts alice.pub_key.to_s(16)
+    pubB=server.gets
+    key="J\x98\aW\x12S93V\xF9[\x8E\x9F.\x99\xD0"#alice.sha1_session(pubB.to_i(16)).slice(0,16)
+    puts "key: #{Converters.str_to_hex key}"
+    cipher = OpenSSL::Cipher::Cipher.new("AES-128-CBC")
+    cipher.decrypt
+    cipher.key=key
+    message.each do |line| 
+      # iv=SecureRandom.random_bytes(16)
+      # cipher.iv=iv
+      # ct=cipher.update(line+"\n")+cipher.final+iv
+      server.puts line
+      ct=server.gets.strip
+      iv=ct.slice!(0,16)
+      puts "#{Converters.str_to_hex iv}, #{iv.length}, #{ct.length}"
+      cipher.iv=iv
+      pt=cipher.update(ct)+cipher.final
+      # printf "#{pt}"
+    end
+
+    server.puts "bye" #cipher.update("bye")
+    server.close
+  rescue Errno::ECONNREFUSED
+    puts "You have to start the diffie-hellman server for this challenge!"
+  end
+end
+def run_challenges
+  # challenge33
+  challenge34
+end
+run_challenges
