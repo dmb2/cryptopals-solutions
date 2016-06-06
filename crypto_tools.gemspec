@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
   s.files = ["lib/converters.rb",
              "lib/string_utils.rb",
              "lib/servers.rb",
+             "lib/dh_clients.rb",
              "lib/hash_functions.rb",
              "lib/stream_cipher.rb",
              "lib/block_crypto.rb",

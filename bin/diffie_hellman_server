@@ -3,50 +3,37 @@ require 'socket'
 require 'pubkey'
 require 'block_crypto'
 require 'securerandom'
+
 # Burp likes to live on 8080, so 9090 works
 server = TCPServer.new('localhost',9090)
-while (connection = server.accept)
-  Thread.new(connection) do |conn| 
-    port,host = conn.peeraddr[1,2]
-    client = "#{host}:#{port}"
-    puts "#{client} connected!"
-    begin 
-      p = conn.readline.strip.to_i(16)
-      g = conn.readline.strip.to_i(16)
-      pubA = conn.readline.strip.to_i(16)
-      # puts "Got diffie-hellman parameters:"
-      # puts "p: #{p} \ng: #{g} \nA: #{pubA}"
-      bob = DiffieHellman.new(p,g)
-      conn.puts bob.pub_key.to_s(16)
-      key ="J\x98\aW\x12S93V\xF9[\x8E\x9F.\x99\xD0" #bob.sha1_session(pubA).slice(0,16)
-      cipher = OpenSSL::Cipher::Cipher.new("AES-128-CBC")
-      cipher.encrypt
-      cipher.key=key
-      puts "key: #{Converters.str_to_hex key}"
-      
-      loop do 
-        request = conn.readline.strip
-        # iv=request.slice!(-16,16)
-        # decipher.iv=iv
-        # pt=decipher.update(request)+decipher.final
-        pt=request
-        # puts pt
-        if pt == "bye"
-          conn.close
-          puts "#{client} said bye and disconnected"
-        end
-        iv=SecureRandom.random_bytes(16)
-        # puts "#{Converters.str_to_hex iv}, #{iv.length}"
-        puts "Sending:"
-        msg=iv+cipher.update(pt)+cipher.final
-        puts Converters.str_to_hex(msg )
-        conn.puts msg
-      end
-    rescue EOFError
-      conn.close
-          conn.close
-          puts "#{client} disconnected"
+loop do 
+  conn = server.accept
+  port,host = conn.peeraddr[1,2]
+  client = "#{host}:#{port}"
+  puts "#{client} connected!"
+  begin 
+    str_p,str_g,str_pubA = conn.readline.split(",")
+    p=str_p.to_i
+    g=str_g.to_i
+    pubA=str_pubA.to_i
+    dh_key = DiffieHellman.new(p,g)
+    conn.puts("#{dh_key.pub_key}")
+    aes_key=dh_key.sha1_session(pubA)
+    puts aes_key.inspect
+    aes = OpenSSL::Cipher::Cipher.new('AES-128-CBC')
+    aes.key=aes_key
+    aes.decrypt
+    loop do 
+      line = conn.readline.strip
+      iv=line.slice!(-16,16)
+      puts iv.inspect
+      aes.iv=iv
+      pt=aes.update(line)+aes.final
+      puts "#{client} says: #{pt}"
+      conn.puts(pt)
     end
-    
+  rescue EOFError
+    conn.close
+    puts "#{client} disconnected"
   end
 end

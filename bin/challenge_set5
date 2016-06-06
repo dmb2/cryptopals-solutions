@@ -3,8 +3,10 @@ require 'socket'
 require 'block_crypto'
 require 'string_utils'
 require 'pubkey'
+require 'dh_clients'
 require 'converters'
 require 'securerandom'
+NIST_PRIME=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
 def challenge33
   # This is a prelude to 34, so we're not going to wrap everything in
   # a nice api just yet, for now just the quick and dirty to make sure
@@ -32,41 +34,50 @@ bank, and of having nothing to do: once or twice she had peeped into the
 book her sister was reading, but it had no pictures or conversations in
 it, 'and what is the use of a book,' thought Alice 'without pictures or
 conversation?'".split("\n")
-  begin 
-    server = TCPSocket.new 'localhost', 9090
-    p=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
-    g=2
-    alice = DiffieHellman.new(p,g);
-    server.puts p.to_s(16)
-    server.puts g.to_s(16)
-    server.puts alice.pub_key.to_s(16)
-    pubB=server.gets
-    key="J\x98\aW\x12S93V\xF9[\x8E\x9F.\x99\xD0"#alice.sha1_session(pubB.to_i(16)).slice(0,16)
-    puts "key: #{Converters.str_to_hex key}"
-    cipher = OpenSSL::Cipher::Cipher.new("AES-128-CBC")
-    cipher.decrypt
-    cipher.key=key
-    message.each do |line| 
-      # iv=SecureRandom.random_bytes(16)
-      # cipher.iv=iv
-      # ct=cipher.update(line+"\n")+cipher.final+iv
-      server.puts line
-      ct=server.gets.strip
-      iv=ct.slice!(0,16)
-      puts "#{Converters.str_to_hex iv}, #{iv.length}, #{ct.length}"
-      cipher.iv=iv
-      pt=cipher.update(ct)+cipher.final
-      # printf "#{pt}"
-    end
-
-    server.puts "bye" #cipher.update("bye")
-    server.close
-  rescue Errno::ECONNREFUSED
-    puts "You have to start the diffie-hellman server for this challenge!"
+  #this class structure was inspired from: http://blog.sysca.co.uk/2015/03/matasano-cryptopalschallenges-3334.html
+  alice = DiffieHellmanPeer.new("alice",NIST_PRIME,2)
+  bob = DiffieHellmanEcho.new("bob",37,2)
+  alice.connect(bob)
+  bob.connect(alice)
+  alice.key_exchange
+  
+  puts alice
+  puts bob
+  if alice.aes_key!=bob.aes_key
+    raise "Diffie Hellman key exchange error, Challenge 34 failed!"
   end
+  # message.each do |m|
+  #   alice.send(m)
+  # end
+  alice.close_connection
+  bob.close_connection
+  mallory = DiffieHellmanMITM.new("mallory",NIST_PRIME,2)
+
+  alice.connect(mallory)
+  mallory.connect(alice)
+  bob.connect(mallory)
+  mallory.connect(bob)
+  alice.key_exchange
+  mallory.key_exchange
+  
+  message.each do |m|
+    alice.send(m)
+  end
+  if mallory.aes_key != alice.aes_key
+    raise "Challenge 34 failed, mallory's key doesn't match alice's"
+  end
+  if mallory.aes_key != bob.aes_key
+    raise "Challenge 34 failed, mallory's key doesn't match bob's"
+  end
+  puts "Challenge 34 passed!"
+end
+
+def challenge35
+  
 end
 def run_challenges
   # challenge33
-  challenge34
+  # challenge34
+  challenge35
 end
 run_challenges
