@@ -10,7 +10,7 @@ class DiffieHellmanPeer
     @aes_key = nil
   end
   def to_s
-    "name: #{@name}, aes_key: #{@aes_key!=nil ? @aes_key.unpack("H*")[0] : "nil"}"
+    "name: #{@name}, aes_key: #{@aes_key!=nil ? @aes_key.unpack("H*")[0] : "nil"}\n"
   end
   def key_exchange
     @peer.handshake("#{@dh_key.P},#{@dh_key.G},#{@dh_key.pub_key}")
@@ -21,12 +21,12 @@ class DiffieHellmanPeer
       raise "Handshake failed, mangled string: #{dh_param_str}"
     elsif params.length==1
       @aes_key=@dh_key.sha1_session(dh_param_str.to_i)
-      puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
+      # puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
     else
       @dh_key = DiffieHellman.new(params[0].to_i,params[1].to_i)
       @aes_key=@dh_key.sha1_session(params[2].to_i)
       @peer.handshake("#{@dh_key.pub_key}")
-      puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
+      # puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
     end
   end
   def connect(peer)
@@ -60,13 +60,13 @@ class DiffieHellmanPeer
   def recieve(message)
     pt = self.aes_decrypt(message)
     # puts "#{@name} recieved #{message.unpack("H*")[0]}"
-    puts "#{@name}: decrypted: #{pt}"
+    # puts "#{@name}: decrypted: #{pt}"
   end
 end
 class DiffieHellmanEcho < DiffieHellmanPeer
  def recieve(message)
     pt = self.aes_decrypt(message)
-    puts "#{@name}: decrypted: #{pt}"
+    # puts "#{@name}: decrypted: #{pt}"
     self.send(pt)
  end 
 end
@@ -88,7 +88,7 @@ class DiffieHellmanMITM < DiffieHellmanPeer
   end
   def recieve(message)
     pt = self.aes_decrypt(message)
-    puts "#{@name}: decrypted: #{pt}"
+    # puts "#{@name}: decrypted: #{pt}"
   end
   def handshake(dh_params)
   end

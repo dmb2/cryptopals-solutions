@@ -21,6 +21,7 @@ end
 class DiffieHellman
   attr_reader :P
   attr_reader :G
+  attr_reader :a
   def initialize(p,g)
     @P = p
     @G = g

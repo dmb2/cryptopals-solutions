@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby 
-require 'socket'
+require 'openssl'
 require 'block_crypto'
 require 'string_utils'
 require 'pubkey'
@@ -8,14 +8,9 @@ require 'converters'
 require 'securerandom'
 NIST_PRIME=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
 def challenge33
-  # This is a prelude to 34, so we're not going to wrap everything in
-  # a nice api just yet, for now just the quick and dirty to make sure
-  # that we can do the Diffie-Hellman math. In 34 we'll put it all in
-  # a server and get the client to talk to the server with a key
-  # exchange
   
   #Alice
-  p=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
+  p=NIST_PRIME
   g=2
   alice = DiffieHellman.new(p,g)
   bob = DiffieHellman.new(p,g)
@@ -46,9 +41,6 @@ conversation?'".split("\n")
   if alice.aes_key!=bob.aes_key
     raise "Diffie Hellman key exchange error, Challenge 34 failed!"
   end
-  # message.each do |m|
-  #   alice.send(m)
-  # end
   alice.close_connection
   bob.close_connection
   mallory = DiffieHellmanMITM.new("mallory",NIST_PRIME,2)
@@ -72,12 +64,169 @@ conversation?'".split("\n")
   puts "Challenge 34 passed!"
 end
 
-def challenge35
+class DHGroups < DiffieHellmanPeer
+  def key_exchange
+    @peer.handshake("#{@dh_key.P},#{@dh_key.G}")
+  end
+  def handshake(dh_params)
+    params = dh_params.split(",")
+    if params.length==2
+      # puts "#{@name} received #{dh_params.inspect}"
+      @dh_key = DiffieHellman.new(params[0].to_i,params[1].to_i)
+      @peer.handshake([6].pack("C*"))
+    elsif params[0]==[6].pack("C*")
+      # puts "#{@name} received #{dh_params.inspect}"
+      @peer.handshake("#{@dh_key.pub_key}")
+    else
+      # puts "#{@name} received #{dh_params.inspect}"
+      @aes_key=@dh_key.sha1_session(dh_params.to_i)
+      if @peer.aes_key==nil
+        @peer.handshake("#{@dh_key.pub_key}")
+      end
+      # puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
+    end
+  end
+end
+class DHGroupsMITM < DHGroups
   
+  def initialize(name,p,g)
+    @name = name
+    @dh_key = DiffieHellman.new(p,g)
+    @aes_key = nil#Digest::SHA1.digest([g%p].pack("C*"))
+    @alice = nil
+    @bob = nil
+  end
+  def handshake(dh_params)
+    params=dh_params.split(",")
+    if params.length == 2
+      @alice.handshake("#{@dh_key.P},#{@dh_key.G}")
+      @bob.handshake("#{@dh_key.P},#{@dh_key.G}")
+    elsif params[0]==[6].pack("C*")
+      @alice.handshake("#{@dh_key.pub_key}")
+      @bob.handshake("#{@dh_key.pub_key}")
+    else
+      @aes_key = @dh_key.sha1_session(dh_params.to_i)
+    end
+  end
+  def connect(peer)
+    if @alice == nil
+      @alice = peer
+    else
+      @bob = peer
+    end
+  end
+  def to_s
+    "name: #{@name}, aes_key: #{@aes_key.unpack("H*")[0]}\n\talice: #{@alice}\n\tbob: #{@bob}"
+  end
+end
+def malicious_g(g)
+  alice = DHGroups.new("alice",NIST_PRIME,2)
+  bob = DHGroups.new("bob",37,5)
+  
+  mallory = DHGroupsMITM.new("mallory",NIST_PRIME,g)
+  alice.connect(mallory)
+  mallory.connect(alice)
+  bob.connect(mallory)
+  mallory.connect(bob)
+  alice.key_exchange
+  if mallory.aes_key!=alice.aes_key
+    puts mallory.aes_key.unpack("H*")[0]
+    puts alice.aes_key.unpack("H*")[0]
+    raise "Challenge 35: Mallory's key does not match alice's"
+  end
+  if mallory.aes_key!=bob.aes_key
+    puts mallory.aes_key.unpack("H*")[0]
+    puts bob.aes_key.unpack("H*")[0]
+    raise "Challenge 35: Mallory's key does not match bob's"
+  end
+end
+def challenge35
+  malicious_g(1)
+  malicious_g(NIST_PRIME)
+  malicious_g(NIST_PRIME-1)
+  puts "Challenge 35 passed!"
+end
+class SRPServer
+  def initialize()
+    @k=3
+    @dh_key = DiffieHellman.new(NIST_PRIME,2)
+    @client = nil
+    @v = nil
+    @salt=nil
+    @pubA = nil
+  end
+  def register(client,email,password)
+    @client = client
+    client.connect(self)
+    @salt = SecureRandom.random_number(2**256)
+    x = Digest::SHA2.digest("#{@salt}#{password}").unpack("H*")[0].to_i(16)
+    g = @dh_key.G
+    p = @dh_key.P
+    @v=g.modexp(x,p)
+    x=0
+  end
+  def connect(client)
+    @client = client
+  end
+  def login(email,pub_key)
+    @pubA = pub_key
+    @client.verify(@salt,@k*@v + @dh_key.pub_key)
+  end
+  def verify(key)
+    u = Digest::SHA2.digest("#{@pubA}#{@k*@v+@dh_key.pub_key}").unpack("H*")[0].to_i(16)
+    s = (@pubA*@v.modexp(u,@dh_key.P)).modexp(@dh_key.a,@dh_key.P)
+    k = Digest::SHA2.digest("#{s}")
+    hmac_key = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'),k,[@salt.to_s(16)].pack("H*"))
+    return hmac_key==key
+  end
+end
+class SRPClient
+  def initialize(email,password)
+    @email=email
+    @password= password
+    @k=3
+    @dh_key = DiffieHellman.new(NIST_PRIME,2)
+    @server = nil
+  end
+  def connect(server)
+    @server = server
+  end
+  def login()
+    @server.login(@email,@dh_key.pub_key)
+  end
+  def verify(salt,pubB)
+    u = Digest::SHA2.digest("#{@dh_key.pub_key}#{pubB}").unpack("H*")[0].to_i(16)
+    x = Digest::SHA2.digest("#{salt}#{@password}").unpack("H*")[0].to_i(16)
+    a=@dh_key.a
+    n=@dh_key.P
+    g=@dh_key.G
+    s = (pubB - @k*g.modexp(x,n) ).modexp(a+u*x,n)
+    k = Digest::SHA2.digest("#{s}")
+    hmac_key = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'),k,[salt.to_s(16)].pack("H*"))
+    if @server.verify(hmac_key)
+      puts "Logged in!"
+    else
+      raise "Secure Remote Password authetication failed"
+    end
+  end
+end
+def challenge36
+  server = SRPServer.new
+  client = SRPClient.new("foo@bar.com","password")
+  client.connect(server)
+  server.register(client,"foo@bar.com","password")
+  # begin 
+    client.login
+  # rescue Exception => e
+  #   puts "Login failed! #{e.message}"
+  #   raise "Challenge 36 failed!"
+  # end
+  puts "Challenge 36 passed!"
 end
 def run_challenges
   # challenge33
   # challenge34
-  challenge35
+  # challenge35
+  challenge36
 end
 run_challenges
