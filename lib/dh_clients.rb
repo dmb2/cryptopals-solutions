@@ -103,3 +103,61 @@ class DiffieHellmanMITM < DiffieHellmanPeer
     "name: #{@name} aes_key: #{@aes_key}\n\talice: #{@alice}\n\tbob: #{@bob}"
   end
 end
+
+
+class DHGroups < DiffieHellmanPeer
+  def key_exchange
+    @peer.handshake("#{@dh_key.P},#{@dh_key.G}")
+  end
+  def handshake(dh_params)
+    params = dh_params.split(",")
+    if params.length==2
+      # puts "#{@name} received #{dh_params.inspect}"
+      @dh_key = DiffieHellman.new(params[0].to_i,params[1].to_i)
+      @peer.handshake([6].pack("C*"))
+    elsif params[0]==[6].pack("C*")
+      # puts "#{@name} received #{dh_params.inspect}"
+      @peer.handshake("#{@dh_key.pub_key}")
+    else
+      # puts "#{@name} received #{dh_params.inspect}"
+      @aes_key=@dh_key.sha1_session(dh_params.to_i)
+      if @peer.aes_key==nil
+        @peer.handshake("#{@dh_key.pub_key}")
+      end
+      # puts "#{@name}'s shared aes key: #{@aes_key.unpack("H*")[0]}"
+    end
+  end
+end
+
+class DHGroupsMITM < DHGroups
+  
+  def initialize(name,p,g)
+    @name = name
+    @dh_key = DiffieHellman.new(p,g)
+    @aes_key = nil#Digest::SHA1.digest([g%p].pack("C*"))
+    @alice = nil
+    @bob = nil
+  end
+  def handshake(dh_params)
+    params=dh_params.split(",")
+    if params.length == 2
+      @alice.handshake("#{@dh_key.P},#{@dh_key.G}")
+      @bob.handshake("#{@dh_key.P},#{@dh_key.G}")
+    elsif params[0]==[6].pack("C*")
+      @alice.handshake("#{@dh_key.pub_key}")
+      @bob.handshake("#{@dh_key.pub_key}")
+    else
+      @aes_key = @dh_key.sha1_session(dh_params.to_i)
+    end
+  end
+  def connect(peer)
+    if @alice == nil
+      @alice = peer
+    else
+      @bob = peer
+    end
+  end
+  def to_s
+    "name: #{@name}, aes_key: #{@aes_key.unpack("H*")[0]}\n\talice: #{@alice}\n\tbob: #{@bob}"
+  end
+end

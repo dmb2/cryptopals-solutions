@@ -20,7 +20,9 @@ Gem::Specification.new do |s|
              "lib/stream_cipher.rb",
              "lib/block_crypto.rb",
              "lib/crypto_tools.rb",
-             "lib/pubkey.rb"]
+             "lib/pubkey.rb",
+             "lib/srp_server.rb"
+            ]
   s.homepage = 'https://dbjergaard.github.io/'
   s.license = 'MIT'
 end
