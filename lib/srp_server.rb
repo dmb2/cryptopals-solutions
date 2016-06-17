@@ -66,3 +66,65 @@ class SRPClient
     end
   end
 end
+
+class SimpleSRPServer
+  def initialize()
+    @client = nil
+    @salt = nil
+    @v = nil
+    @username = nil
+    @dh_key = DiffieHellman.new(NIST_PRIME,2)
+  end
+  def register(client,username,password)
+    @client = client
+    @username = username
+    client.connect(self)
+    @salt = SecureRandom.random_number(2**256)
+    x = Digest::SHA2.digest("#{@salt}#{password}").unpack("H*")[0].to_i(16)
+    g = @dh_key.G
+    p = @dh_key.P
+    @v=g.modexp(x,p)
+    x=0
+  end
+  def connect(client)
+    @client = client
+  end
+  def login(email,pub_key)
+    @pubA = pub_key
+    @u = SecureRandom.random_number(2**128)
+    @client.verify(@salt,@dh_key.pub_key,@u)
+  end
+  def verify(key)
+    s = (@pubA*@v.modexp(@u,NIST_PRIME)).modexp(@dh_key.a,NIST_PRIME)
+    k = Digest::SHA2.digest("#{s}")
+    hmac_key = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'),k,[@salt.to_s(16)].pack("H*"))
+    return hmac_key==key
+  end
+end
+class SimpleSRPClient
+  def initialize(email,password)
+    @email = email
+    @password = password
+    @dh_key = DiffieHellman.new(NIST_PRIME,2)
+    @server = nil
+  end
+  def connect(server)
+    @server = server
+  end
+  def login()
+    @server.login(@email,@dh_key.pub_key)
+  end
+  def verify(salt,pubB,u)
+    
+    x = Digest::SHA2.digest("#{salt}#{@password}").unpack("H*")[0].to_i(16)
+    a = @dh_key.a
+    s = pubB.modexp(a + u*x,NIST_PRIME)
+    k = Digest::SHA2.digest("#{s}")
+    hmac_key = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'),k,[salt.to_s(16)].pack("H*"))
+    if @server.verify(hmac_key)
+      puts "Logged in!"
+    else
+      raise "Secure Remote Password authetication failed"
+    end
+  end
+end

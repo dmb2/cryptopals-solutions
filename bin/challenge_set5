@@ -135,8 +135,12 @@ def challenge37
   end
   puts "Challenge 37 passed!"
 end
-def challenge 38
-  
+
+def challenge38
+  server = SimpleSRPServer.new
+  client = SimpleSRPClient.new("foo@bar.com","password")
+  server.register(client,"foo@bar.com","password")
+  client.login
 end
 def run_challenges
   # challenge33
