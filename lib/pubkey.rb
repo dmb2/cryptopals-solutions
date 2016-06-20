@@ -1,23 +1,8 @@
 require 'digest/sha2'
+require 'integer_utils'
 require 'securerandom'
+require 'openssl'
 
-class Integer
-  def modexp(exponent,modulus)
-    if modulus == 1
-      return 0
-    end
-    result = 1
-    base = self % modulus
-    while exponent > 0
-      if exponent%2 == 1
-        result = (result*base) % modulus
-      end
-      exponent = exponent >> 1
-      base = (base*base) % modulus
-    end
-    result
-  end
-end
 class DiffieHellman
   attr_reader :P
   attr_reader :G
@@ -41,5 +26,42 @@ class DiffieHellman
   end
   def to_s()
     "p: #{@P} \n g: #{@G} \n x: #{@a}"
+  end
+end
+
+class RSAPub
+  attr_reader :e
+  attr_reader :n
+  def initialize(e,n)
+    @e=e
+    @n=n
+  end
+end
+class RSAPriv
+  attr_reader :d
+  attr_reader :n
+  def initialize(d,n)
+    @d=d
+    @n=n
+  end
+end
+class RSA
+  def self.encrypt(message,pub_key)
+    m = message.unpack("H*")[0].to_i(16)
+    c = m.modexp(pub_key.e,pub_key.n)
+    return c.to_s(16)
+  end
+  def self.decrypt(ciphertext,key)
+   c = ciphertext.to_i(16)
+   m = c.modexp(key.d,key.n)
+   return [m.to_s(16)].pack("H*")
+  end
+  def self.gen_pair(e)
+    p = OpenSSL::BN::generate_prime(512).to_i 
+    q = OpenSSL::BN::generate_prime(512).to_i
+    n = p*q
+    et = (p-1)*(q-1)
+    d = e.invmod(et)
+    return [RSAPub.new(e,n),RSAPriv.new(d,n)] 
   end
 end

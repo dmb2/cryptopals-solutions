@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.email = 'dbjergaard@gmail.com'
   s.files = ["lib/converters.rb",
              "lib/string_utils.rb",
+             "lib/integer_utils.rb",
              "lib/servers.rb",
              "lib/dh_clients.rb",
              "lib/hash_functions.rb",

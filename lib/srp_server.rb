@@ -128,3 +128,39 @@ class SimpleSRPClient
     end
   end
 end
+
+class SimpleSRPMITM 
+  attr_reader :cracked_pw
+  def initialize
+    @client = nil
+    @pubA = nil
+    @cracked_pw = nil
+    @x_map = {}
+    words = File.read("/usr/share/dict/words").split("\n").slice(0,500)
+    words.each do |pw| 
+      @x_map[pw] = Digest::SHA2.digest("0#{pw}").unpack("H*")[0].to_i(16)
+    end
+  end
+  def connect(client)
+    @client = client
+  end
+  def login(email,pubA)
+    @pubA=pubA
+    # send salt=0, B=2, u=1 this forces the client to compute
+    # something we know, namely (pubA*g^x)%n, then if we can enumerate
+    # all values of x, we can crack the password.
+    @client.verify(0,2,1) 
+  end
+  def verify(hmac_key)
+    @x_map.each do |pw,x|
+      s = (@pubA*2.modexp(x,NIST_PRIME))%NIST_PRIME
+      k = Digest::SHA2.digest("#{s}")
+      key = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha256'),k,[0.to_s(16)].pack("H*"))
+      if key == hmac_key
+        @cracked_pw = pw
+        break
+      end
+    end
+    return true
+  end
+end

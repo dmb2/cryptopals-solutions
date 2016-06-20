@@ -135,12 +135,36 @@ def challenge37
   end
   puts "Challenge 37 passed!"
 end
-
 def challenge38
+  words = File.read("/usr/share/dict/words").split("\n").slice(0,500)
+  password = words[rand(0..words.size-1)]
   server = SimpleSRPServer.new
-  client = SimpleSRPClient.new("foo@bar.com","password")
-  server.register(client,"foo@bar.com","password")
+  client = SimpleSRPClient.new("foo@bar.com",password)
+  server.register(client,"foo@bar.com",password)
+  # mitm!
+  mallory = SimpleSRPMITM.new
+  client.connect(mallory)
+  mallory.connect(client)
   client.login
+  puts "Cracked Password: #{mallory.cracked_pw}"
+  if mallory.cracked_pw != password
+    raise "Challenge 38 failed!"
+  else
+    puts "Challenge 38 passed!"
+  end
+end
+def challenge39
+  pub_key,key = RSA.gen_pair(3)
+  message ="Hello World"
+  ct = RSA.encrypt(message,pub_key)
+  pt = RSA.decrypt(ct,key)
+  if message != pt
+    raise "RSA Encryption failed"
+  else
+    puts "Challenge 39 passed!"
+  end
+end
+def challenge40
 end
 def run_challenges
   # challenge33
@@ -148,6 +172,8 @@ def run_challenges
   # challenge35
   # challenge36
   # challenge37
-  challenge38
+  # challenge38
+  # challenge39
+  challenge40
 end
 run_challenges
