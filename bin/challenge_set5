@@ -6,6 +6,7 @@ require 'dh_clients'
 require 'converters'
 require 'securerandom'
 require 'srp_server'
+require 'bigdecimal'
 NIST_PRIME=0xffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff
 def challenge33
   
@@ -165,15 +166,38 @@ def challenge39
   end
 end
 def challenge40
+  p0,k0 = RSA.gen_pair(3)
+  p1,k1 = RSA.gen_pair(3)
+  p2,k2 = RSA.gen_pair(3)
+  n0=p0.n
+  n1=p1.n
+  n2=p2.n
+  b=n0*n1*n2
+  b0 = b/n0
+  b1 = b/n1
+  b2 = b/n2
+  message = "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do:"
+  # message = "Hello World"
+  c0 = RSA.encrypt(message,p0).to_i(16)
+  c1 = RSA.encrypt(message,p1).to_i(16)
+  c2 = RSA.encrypt(message,p2).to_i(16)
+  r = (c0*b0*(b0.invmod(n0)) + c1*b1*(b1.invmod(n1)) + c2*b2*(b2.invmod(n2)))%b
+  pt= [(r.cube_root%(p0.n*p1.n*p2.n)).to_s(16)].pack("H*")
+  if pt != message
+    raise "Challenge 40 failed!"
+  else
+    puts "Challenge 40 passed!"
+  end
+  
 end
 def run_challenges
-  # challenge33
-  # challenge34
-  # challenge35
-  # challenge36
-  # challenge37
-  # challenge38
-  # challenge39
+  challenge33
+  challenge34
+  challenge35
+  challenge36
+  challenge37
+  challenge38
+  challenge39
   challenge40
 end
 run_challenges
