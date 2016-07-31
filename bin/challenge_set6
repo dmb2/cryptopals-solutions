@@ -1,32 +1,55 @@
 #!/usr/bin/env ruby 
-
+require 'digest/sha2'
 require 'string_utils'
 require 'pubkey'
 require 'securerandom'
 require 'bigdecimal'
 
 class RSAServer
+  attr_reader :pub_key
   def initialize()
     @pub_key,@key = RSA.gen_pair(65537)
-    issued_before = {}
+    @issued_before = {}
   end
   def decrypt(cipher_text)
-    if issued_before[Digest::SHA2.hex_digest(cipher_text)]
+    if @issued_before[Digest::SHA2.hexdigest(cipher_text)]
       return "ERROR"
     end
     return RSA.decrypt(cipher_text,@key)
   end
   def issue_token()
-    
+   text=sprintf("{\n time: %d,\n social: '%d-%d-%d',\n}\n",Time.new.to_i,Random.rand(99),Random.rand(99),(1000+Random.rand(9999))%10000)
+   cipher_text=RSA.encrypt(text,@pub_key)
+   @issued_before[Digest::SHA2.hexdigest(cipher_text)]=true
+   cipher_text
   end
 end
 
 def challenge41
+  server = RSAServer.new
+  token=server.issue_token()
+  pub_key = server.pub_key
+  n=pub_key.n
+  e=pub_key.e
+  s=1+SecureRandom.random_number(n-1)
+  ct = s.modexp(e,n)*token.to_i(16)
+  garbled_pt = server.decrypt(ct.to_s(16))
+  if garbled_pt=="ERROR"
+    raise "Challenge 41 failed!"
+  end
+  p_int  = garbled_pt.unpack("H*")[0].to_i(16)
+  p = (p_int*s.invmod(n))%n
+  plain_text=[p.to_s(16)].pack("H*")
+  if plain_text.include?("time")
+    puts "Challenge 41 passed!"
+  end
+end
+def challenge42
   
 end
-
 def run_challenges
-  challenge41
+  # challenge41
+  challenge42
 end
 
 run_challenges
