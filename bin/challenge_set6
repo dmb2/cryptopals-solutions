@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby 
+
+require 'string_utils'
+require 'pubkey'
+require 'securerandom'
+require 'bigdecimal'
+
+class RSAServer
+  def initialize()
+    @pub_key,@key = RSA.gen_pair(65537)
+    issued_before = {}
+  end
+  def decrypt(cipher_text)
+    if issued_before[Digest::SHA2.hex_digest(cipher_text)]
+      return "ERROR"
+    end
+    return RSA.decrypt(cipher_text,@key)
+  end
+  def issue_token()
+    
+  end
+end
+
+def challenge41
+  
+end
+
+def run_challenges
+  challenge41
+end
+
+run_challenges

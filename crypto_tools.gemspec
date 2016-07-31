@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.executables << 'challenge_set3'
   s.executables << 'challenge_set4'
   s.executables << 'challenge_set5'
-  s.executables << 'diffie_hellman_server'
+  s.executables << 'challenge_set6'
   s.date = '2015-05-06'
   s.summary = 'Solutions to Matasano Cryptography challenges'
   s.description = 'Tools for completing Matasano\'s crypto challenges'
