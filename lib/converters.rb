@@ -3,10 +3,6 @@ require 'base64'
 class Converters
   def self.hex_to_bytes(in_str)
     # Takes an input string and returns a byte array
-    unless in_str.size % 2 == 0
-      puts in_str.size
-      raise "Hex string must contain pairs of hex digits"
-    end
     if in_str =~ /[^0-9A-Fa-f]/
       raise "String contains non-hex characters!"
     end

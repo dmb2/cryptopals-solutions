@@ -25,9 +25,6 @@ class CryptoToolsTest < MiniTest::Test
   def test_hamming_dist
     assert_equal CryptoTools.hamming_distance("this is a test","wokka wokka!!!"),37
   end
-  def test_nbits
-    assert_equal CryptoTools.nbits(31415926),18
-  end
   def test_detect_aes_ecb
     input=BlockCrypto.AES_128_ECB("A"*256,"A"*16)
     output=CryptoTools.detect_aes_ecb(input)

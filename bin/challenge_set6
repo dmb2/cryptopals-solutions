@@ -45,7 +45,12 @@ def challenge41
   end
 end
 def challenge42
-  
+  pub_key,key = RSA.gen_pair(3)
+  message = "hi mom"
+  puts "Signing..."
+  signature=RSA.sign(message,key)
+  puts "Verifying..."
+  RSA.verify(message,pub_key,signature)
 end
 def run_challenges
   # challenge41

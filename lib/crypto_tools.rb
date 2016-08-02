@@ -90,15 +90,6 @@ class CryptoTools
     end
     return key,minscore
   end
-  def self.nbits(value)
-    tmp=value
-    num=0
-    while tmp != 0
-      tmp &= (tmp - 1)
-      num+=1
-    end
-    return num
-  end
   def self.undiffuse(y,c,b,dir=:left)
     # this is written for the 32 bit mersenne rng, inverts part of the
     # tempering function used in the mersenne twister
@@ -125,7 +116,7 @@ class CryptoTools
     end
     dist=0
     str1.bytes.zip(str2.bytes).each{|x,y|
-      dist+=nbits(x^y)
+      dist+=(x^y).nbits
     }
     return dist
   end
