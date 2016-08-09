@@ -156,9 +156,11 @@ def challenge38
 end
 def challenge39
   pub_key,key = RSA.gen_pair(3)
-  message ="Hello World"
+  message ="\x00Hello World"
   ct = RSA.encrypt(message,pub_key)
   pt = RSA.decrypt(ct,key)
+  puts message.inspect
+  puts pt.inspect
   if message != pt
     raise "RSA Encryption failed"
   else
@@ -191,12 +193,12 @@ def challenge40
   
 end
 def run_challenges
-  challenge33
-  challenge34
-  challenge35
-  challenge36
-  challenge37
-  challenge38
+  # challenge33
+  # challenge34
+  # challenge35
+  # challenge36
+  # challenge37
+  # challenge38
   challenge39
   challenge40
 end

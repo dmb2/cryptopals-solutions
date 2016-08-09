@@ -47,14 +47,15 @@ class RSAPriv
 end
 class RSA
   def self.encrypt(message,pub_key)
-    m = message.unpack("H*")[0].to_i(16)
+    m = message.unpack("H*").first.to_i(16)
     c = m.modexp(pub_key.e,pub_key.n)
     c.to_s(16)
   end
   def self.decrypt(ciphertext,key)
    c = ciphertext.to_i(16)
    m = c.modexp(key.d,key.n)
-   return [m.to_s(16)].pack("H*")
+   msg = [m.to_s(16)].pack("H*")
+   return msg
   end
   def self.sign(message,key)
     # This isn't really pkcs1.5 padding, but its close enough to make
@@ -68,22 +69,29 @@ class RSA
     
     hash = Digest::SHA2.digest(message)
     padding = [0,1]
-    len = key.n.nbits 
+    len = 64 #key.n.nbits/8
     # 00 01 ff ... ff 00 hash
-    pad = [255]*(len/8 - (3 + hash.length))
+    pad = [255]*(len - (3 + hash.length))
     padding += pad + [0]
-    puts (padding + hash.bytes).pack("C*").unpack("H*").first
-    c=(padding + hash.bytes).pack("C*").unpack("H*").first.to_i(16)
-    m=c.modexp(key.d,key.n)
-    [m.to_s(16)].pack("H*")
+    signature = (padding + hash.bytes).pack("C*").unpack("H*").first
+    cipher_text=RSA.decrypt(signature,key)
+    return cipher_text
   end
   def self.verify(message,pub_key,signature)
     hash = Digest::SHA2.digest(message)
-    p = signature.unpack("H*").first.to_i(16)
-    m = p.modexp(pub_key.e,pub_key.n)
-    pt = m.to_s(16)
-    puts pt.inspect
-    puts [pt].pack("H*").inspect
+    raw_sig= [RSA.encrypt(signature,pub_key)].pack("H*")
+    sig = "0"*3+raw_sig.unpack("H*").first
+    null,padding,sign_hash=[sig].pack("H*").split("\x00")
+    if null!=""
+      raise "Signature didn't begin with a null byte!"
+    end
+    if padding.bytes.first !=1
+      raise "Invalid padding schema"
+    end
+    if padding.bytes[1]!=0xff and padding.bytes.last!=0xff
+      raise "Invalid padding bytes"
+    end
+    return sign_hash==hash
   end
   def self.gen_pair(e)
     p = OpenSSL::BN::generate_prime(512).to_i 

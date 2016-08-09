@@ -47,14 +47,27 @@ end
 def challenge42
   pub_key,key = RSA.gen_pair(3)
   message = "hi mom"
-  puts "Signing..."
   signature=RSA.sign(message,key)
-  puts "Verifying..."
-  RSA.verify(message,pub_key,signature)
+  if not RSA.verify(message,pub_key,signature)
+    raise "RSA signature verification failed!"
+  end 
+  forged_padding = [0,1,0xff,0xff,0].pack("C*")
+  hash = Digest::SHA2.digest(message)
+  fs = (forged_padding+hash).unpack("H*").first.to_i(16)
+  forged_signature = [fs.cube_root.to_s(16)].pack("H*")
+  if not RSA.verify(message,pub_key,signature)
+    raise "Challenge 42 failed!"
+  else
+    puts "Challenge 42 passed!"
+  end
+end
+def challenge43
+  
 end
 def run_challenges
   # challenge41
-  challenge42
+  # challenge42
+  challenge43
 end
 
 run_challenges
